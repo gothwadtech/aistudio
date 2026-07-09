@@ -1,0 +1,278 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --zinc-950: #202124; /* Absolute Main Base Background */
+  --zinc-930: #1a1b1d; /* Slightly darker accent for titlebars/tabs */
+  --zinc-900: #28292c; /* Card/Sidebar background */
+  --zinc-850: #303134; /* Thin border color */
+  --zinc-800: #3c4043; /* Hover and container border */
+  --zinc-700: #5f6368; /* Disabled or muted borders */
+  --zinc-600: #70757a; /* Muted icons or labels */
+  --zinc-500: #9aa0a6; /* Subtitles and general text info */
+  --zinc-400: #bdc1c6; /* Secondary body text */
+  --zinc-300: #e8eaed; /* Main body text */
+  --zinc-200: #f1f3f4; /* High-contrast text */
+  --zinc-100: #f8f9fa; /* Clean header text */
+  --zinc-50: #ffffff;  /* Solid pure white */
+  
+  --primary: #375a7f;
+  --primary-gradient: linear-gradient(135deg, #375a7f 0%, #037cd1 100%);
+}
+
+/* Perfect Material Light Theme Overrides */
+html.theme-light, :root.theme-light {
+  --zinc-950: #f1f3f4; /* Main Light Base Background */
+  --zinc-930: #e8eaed; /* Tab bar / Section Header background */
+  --zinc-900: #ffffff; /* Card / Sidebar background */
+  --zinc-850: #dadce0; /* Border Color */
+  --zinc-800: #e8eaed; /* Hover border */
+  --zinc-700: #bdc1c6; /* Secondary border line */
+  --zinc-600: #9aa0a6; /* Muted subtitle */
+  --zinc-500: #5f6368; /* General secondary label text */
+  --zinc-400: #475569; /* Secondary body text */
+  --zinc-300: #202124; /* Main body text */
+  --zinc-200: #1a1b1d; /* High-contrast text */
+  --zinc-100: #000000; /* Header text */
+  --zinc-50: #f8f9fa;  
+}
+
+@theme {
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --primary-gradient: var(--primary-gradient);
+  
+  /* Overriding Tailwind's zinc scale to be perfectly unified with Google Dark (#202124) and Light theme colors */
+  --color-zinc-950: var(--zinc-950);
+  --color-zinc-930: var(--zinc-930);
+  --color-zinc-900: var(--zinc-900);
+  --color-zinc-850: var(--zinc-850);
+  --color-zinc-800: var(--zinc-800);
+  --color-zinc-700: var(--zinc-700);
+  --color-zinc-600: var(--zinc-600);
+  --color-zinc-500: var(--zinc-500);
+  --color-zinc-400: var(--zinc-400);
+  --color-zinc-300: var(--zinc-300);
+  --color-zinc-200: var(--zinc-200);
+  --color-zinc-100: var(--zinc-100);
+  --color-zinc-50: var(--zinc-50);
+
+  --color-bg-main: var(--bg-main);
+  --color-bg-card: var(--bg-card);
+  --color-bg-chat: var(--bg-chat);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border-color: var(--border-color);
+  --color-accent-color: var(--accent-color);
+  --color-header-bg: var(--header-bg);
+  --color-header-text: var(--header-text);
+  --color-nav-bg: var(--nav-bg);
+  --color-nav-text: var(--nav-text);
+  --color-brand-color: var(--brand-color);
+  --color-box-bg: var(--box-bg);
+  --color-box-text: var(--box-text);
+
+  --animate-ping-slow: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+
+  @keyframes ping-slow {
+    75%, 100% {
+      transform: scale(2);
+      opacity: 0;
+    }
+  }
+}
+
+@layer base {
+  /* Light Theme (Default) */
+  :root {
+    --primary: #375a7f;
+    --primary-foreground: #ffffff;
+    --primary-shadow: rgba(4, 148, 244, 0.1);
+    --bg-main: #202124;
+    --bg-card: #202124;
+    --bg-chat: #202124;
+    --text-primary: #ffffff;
+    --text-secondary: #bdc1c6;
+    --border-color: #303134;
+    --accent-color: #375a7f;
+    --bubble-own: #3c4043;
+    --bubble-other: #303134;
+    --bubble-text-own: #ffffff;
+    --bubble-text-other: #ffffff;
+    --header-bg: #202124;
+    --header-text: #ffffff;
+    --nav-bg: #202124;
+    --nav-text: #ffffff;
+    --brand-color: #375a7f;
+    --box-bg: #28292c;
+    --box-text: #ffffff;
+  }
+
+  /* Dark Theme */
+  [data-theme='dark'] {
+    --primary: #375a7f;
+    --primary-foreground: #ffffff;
+    --primary-shadow: rgba(4, 148, 244, 0.2);
+    --bg-main: #202124;
+    --bg-card: #202124;
+    --bg-chat: #202124;
+    --text-primary: #ffffff;
+    --text-secondary: #bdc1c6;
+    --border-color: #303134;
+    --accent-color: #375a7f;
+    --bubble-own: #3c4043;
+    --bubble-other: #303134;
+    --bubble-text-own: #ffffff;
+    --bubble-text-other: #ffffff;
+    --header-bg: #202124;
+    --header-text: #ffffff;
+    --nav-bg: #202124;
+    --nav-text: #ffffff;
+    --brand-color: #375a7f;
+    --box-bg: #28292c;
+    --box-text: #ffffff;
+  }
+
+  /* Safe Area Helpers */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .mt-safe {
+    margin-top: env(safe-area-inset-top);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    width: 100vw;
+    height: var(--true-height, 100dvh);
+    @apply antialiased overflow-x-hidden fixed inset-0;
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+
+  /* Allow text selection in specific elements */
+  input, textarea, [contenteditable="true"] {
+    -webkit-user-select: text;
+    -khtml-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+
+
+  html {
+    width: 100vw;
+    height: var(--true-height, 100dvh);
+    @apply overflow-hidden fixed inset-0;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+
+  #root {
+    width: 100vw;
+    height: var(--true-height, 100dvh);
+    @apply overflow-hidden flex bg-[var(--bg-main)];
+  }
+
+  /* Global Fluid Container */
+  .app-container {
+    width: 100vw;
+    height: var(--true-height, 100dvh);
+    @apply bg-[var(--bg-card)] relative overflow-hidden flex flex-col;
+  }
+
+  /* Prevent any element from breaking layout */
+  * {
+    box-sizing: border-box;
+  }
+}
+
+/* Instagram-like scrollbar hiding */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Highlight.js Syntax Highlighter Theme - GitHub/VS Code Dark Style */
+.hljs-comment,
+.hljs-quote {
+  color: #768390 !important;
+  font-style: italic !important;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+  color: #f47067 !important; /* beautiful keyword pink-red */
+  font-weight: 500 !important;
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-attribute {
+  color: #6cb6ff !important; /* bright blue */
+}
+
+.hljs-string,
+.hljs-meta,
+.hljs-string .hljs-subst {
+  color: #96d0ff !important; /* cool cyan/blue strings */
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-name {
+  color: #dcbdfb !important; /* purple functions and tags */
+}
+
+.hljs-class .hljs-title,
+.hljs-type,
+.hljs-built_in {
+  color: #f7c07a !important; /* light orange/yellow types & classes */
+}
+
+.hljs-variable,
+.hljs-template-variable {
+  color: #f69d50 !important;
+}
+
+.hljs-attr {
+  color: #adbac7 !important;
+}
+
+.hljs-params {
+  color: #adbac7 !important;
+}
+
+.hljs-emphasis {
+  font-style: italic !important;
+}
+
+.hljs-strong {
+  font-weight: bold !important;
+}
+
+
