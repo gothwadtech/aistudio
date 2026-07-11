@@ -1,16 +1,18 @@
 import React from "react";
 import { GrixFileNode } from "../types/github";
 import PrimarySidebar from "./PrimarySidebar";
-import CodeEditor from "./CodeEditor";
-import AppPreviewPanel from "./AppPreviewPanel";
-import WelcomeScreen from "./WelcomeScreen";
-import AiCompanionPanel from "./AiCompanionPanel";
 import StatusBar from "./StatusBar";
-import ChatStudio from "../features/chatai/ChatStudio";
-import { Eye, X, Sparkles, MessageSquare, FileCode2, Menu, GitBranch, UploadCloud, Database, Settings } from "lucide-react";
-import IntegrationsPanel from "./IntegrationsPanel";
+import { Eye, X, Sparkles, MessageSquare, FileCode2, Menu, GitBranch, UploadCloud, Database, Settings, LogIn } from "lucide-react";
 import SettingsPanel from "./sidebar/SettingsPanel";
 import SourceControlPanel from "./sidebar/SourceControlPanel";
+import GothwadAuthPanel from "./sidebar/GothwadAuthPanel";
+
+const CodeEditor = React.lazy(() => import("./CodeEditor"));
+const AppPreviewPanel = React.lazy(() => import("./AppPreviewPanel"));
+const WelcomeScreen = React.lazy(() => import("./WelcomeScreen"));
+const AiCompanionPanel = React.lazy(() => import("./AiCompanionPanel"));
+const ChatStudio = React.lazy(() => import("../features/chatai/ChatStudio"));
+const IntegrationsPanel = React.lazy(() => import("./IntegrationsPanel"));
 
 interface DesktopLayoutProps {
   accentColor: string;
@@ -18,7 +20,7 @@ interface DesktopLayoutProps {
   handleSetActiveStudio: (studio: "chat" | "software") => void;
   user: any;
   isMobile: boolean;
-  activeSection: "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud";
+  activeSection: "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud" | "login";
   setActiveSection: (section: any) => void;
   selectedRepo: any;
   selectedBranch: string;
@@ -62,6 +64,12 @@ interface DesktopLayoutProps {
   saveFile: (commitMessage: string) => Promise<void>;
   aiPanelOpen: boolean;
   handleToggleAiPanel: () => void;
+  chatSessions: any[];
+  activeChatSessionId: string;
+  onSetActiveChatSessionId: (id: string) => void;
+  onUpdateChatSessions: (sessions: any[]) => void;
+  customApiKey: string;
+  onSetCustomApiKey: (key: string) => void;
 }
 
 export default function DesktopLayout({
@@ -113,7 +121,13 @@ export default function DesktopLayout({
   updateEditor,
   saveFile,
   aiPanelOpen,
-  handleToggleAiPanel
+  handleToggleAiPanel,
+  chatSessions,
+  activeChatSessionId,
+  onSetActiveChatSessionId,
+  onUpdateChatSessions,
+  customApiKey,
+  onSetCustomApiKey
 }: DesktopLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState<boolean>(true);
 
@@ -201,18 +215,25 @@ export default function DesktopLayout({
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
               <div className="max-w-2xl mx-auto">
-                <IntegrationsPanel
-                  mode="deployment"
-                  token={token}
-                  user={user}
-                  onLogout={logout}
-                  patInput={patInput}
-                  onPatInputChange={onPatInputChange}
-                  onPatSubmit={onPatSubmit}
-                  onTriggerOAuth={onTriggerOAuth}
-                  authConfig={authConfig}
-                  accentColor={accentColor}
-                />
+                <React.Suspense fallback={
+                  <div className="flex h-32 flex-col items-center justify-center gap-2 text-zinc-500 font-mono text-xs">
+                    <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                    <span className="animate-pulse text-[10px]">LOADING DEPLOYMENT MODULE...</span>
+                  </div>
+                }>
+                  <IntegrationsPanel
+                    mode="deployment"
+                    token={token}
+                    user={user}
+                    onLogout={logout}
+                    patInput={patInput}
+                    onPatInputChange={onPatInputChange}
+                    onPatSubmit={onPatSubmit}
+                    onTriggerOAuth={onTriggerOAuth}
+                    authConfig={authConfig}
+                    accentColor={accentColor}
+                  />
+                </React.Suspense>
               </div>
             </div>
           </div>
@@ -249,18 +270,25 @@ export default function DesktopLayout({
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
               <div className="max-w-2xl mx-auto">
-                <IntegrationsPanel
-                  mode="cloud"
-                  token={token}
-                  user={user}
-                  onLogout={logout}
-                  patInput={patInput}
-                  onPatInputChange={onPatInputChange}
-                  onPatSubmit={onPatSubmit}
-                  onTriggerOAuth={onTriggerOAuth}
-                  authConfig={authConfig}
-                  accentColor={accentColor}
-                />
+                <React.Suspense fallback={
+                  <div className="flex h-32 flex-col items-center justify-center gap-2 text-zinc-500 font-mono text-xs">
+                    <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                    <span className="animate-pulse text-[10px]">LOADING CLOUD GATEWAY...</span>
+                  </div>
+                }>
+                  <IntegrationsPanel
+                    mode="cloud"
+                    token={token}
+                    user={user}
+                    onLogout={logout}
+                    patInput={patInput}
+                    onPatInputChange={onPatInputChange}
+                    onPatSubmit={onPatSubmit}
+                    onTriggerOAuth={onTriggerOAuth}
+                    authConfig={authConfig}
+                    accentColor={accentColor}
+                  />
+                </React.Suspense>
               </div>
             </div>
           </div>
@@ -312,6 +340,91 @@ export default function DesktopLayout({
                   onLogout={logout}
                   user={user}
                 />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSection === "github") {
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950 p-6 font-sans">
+          <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col overflow-hidden bg-zinc-900 border border-zinc-850 rounded-2xl shadow-2xl animate-[fadeIn_0.15s_ease-out]">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-zinc-850 flex items-center justify-between bg-zinc-930/40">
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+                  style={{ background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}aa 100%)` }}
+                >
+                  <GitBranch className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-mono font-bold uppercase tracking-tight text-white">GitHub Integration</h2>
+                  <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mt-1">Configure OAuth applications, personal access tokens & repository synchronization</p>
+                </div>
+              </div>
+              {/* Quick Back Button */}
+              <button 
+                onClick={() => setActiveSection("explorer")}
+                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-750 text-zinc-300 rounded-lg text-xs font-mono border border-zinc-750 hover:text-white transition-all cursor-pointer"
+              >
+                ← Back to Editor
+              </button>
+            </div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
+              <div className="max-w-2xl mx-auto">
+                <IntegrationsPanel
+                  mode="github"
+                  token={token}
+                  user={user}
+                  onLogout={logout}
+                  patInput={patInput}
+                  onPatInputChange={onPatInputChange}
+                  onPatSubmit={onPatSubmit}
+                  onTriggerOAuth={onTriggerOAuth}
+                  authConfig={authConfig}
+                  accentColor={accentColor}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSection === "login") {
+      return (
+        <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950 p-6 font-sans">
+          <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col overflow-hidden bg-zinc-900 border border-zinc-850 rounded-2xl shadow-2xl animate-[fadeIn_0.15s_ease-out]">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-zinc-850 flex items-center justify-between bg-zinc-930/40">
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+                  style={{ background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}aa 100%)` }}
+                >
+                  <LogIn className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-mono font-bold uppercase tracking-tight text-white">Login Account</h2>
+                  <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mt-1">Authenticate and connect with your Gothwad AI Studio cloud account</p>
+                </div>
+              </div>
+              {/* Quick Back Button */}
+              <button 
+                onClick={() => setActiveSection("explorer")}
+                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-750 text-zinc-300 rounded-lg text-xs font-mono border border-zinc-750 hover:text-white transition-all cursor-pointer"
+              >
+                ← Back to Editor
+              </button>
+            </div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
+              <div className="max-w-2xl mx-auto">
+                <GothwadAuthPanel accentColor={accentColor} />
               </div>
             </div>
           </div>
@@ -430,6 +543,7 @@ export default function DesktopLayout({
             onDesktopModeChange={onDesktopModeChange}
             activeStudio={activeStudio}
             handleSetActiveStudio={handleSetActiveStudio}
+            onToggleSidebar={() => setIsSidebarOpen(false)}
           />
         )}
 
@@ -437,7 +551,23 @@ export default function DesktopLayout({
         <div className="flex-1 flex flex-col overflow-hidden relative">
           
           {activeStudio === "chat" ? (
-            <ChatStudio accentColor={accentColor} isMobile={isMobile} />
+            <React.Suspense fallback={
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+                <div className="h-5 w-5 animate-spin rounded-full border-t-2 border-r-2 border-zinc-400" style={{ borderTopColor: accentColor }} />
+                <span className="font-mono text-[10px] animate-pulse">LOADING CHAT STUDIO...</span>
+              </div>
+            }>
+              <ChatStudio 
+                accentColor={accentColor} 
+                isMobile={isMobile} 
+                sessions={chatSessions}
+                activeSessionId={activeChatSessionId}
+                onSetActiveSessionId={onSetActiveChatSessionId}
+                onUpdateSessions={onUpdateChatSessions}
+                customApiKey={customApiKey}
+                onSetCustomApiKey={onSetCustomApiKey}
+              />
+            </React.Suspense>
           ) : (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Upper Main Editor Workspace Row */}
@@ -445,7 +575,7 @@ export default function DesktopLayout({
                 
                 {/* 3. Code Canvas Frame (Center/Right) */}
                 <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950">
-                  {activeSection !== "explorer" && activeSection !== "github" ? (
+                  {activeSection !== "explorer" ? (
                     renderFullScreenSection()
                   ) : (
                     <>
@@ -524,23 +654,37 @@ export default function DesktopLayout({
                           {/* Editor Workspace viewport */}
                           <div className="flex-1 flex overflow-hidden relative">
                             <div className="flex-1 min-w-[300px] overflow-hidden relative">
-                              <CodeEditor
-                                activeFile={activeFile}
-                                editorContent={editorContent}
-                                onContentChange={updateEditor}
-                                onSave={saveFile}
-                                isLoading={isLoading}
-                              />
+                              <React.Suspense fallback={
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+                                  <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                                  <span className="font-mono text-[9px] animate-pulse">LOADING EDITOR...</span>
+                                </div>
+                              }>
+                                <CodeEditor
+                                  activeFile={activeFile}
+                                  editorContent={editorContent}
+                                  onContentChange={updateEditor}
+                                  onSave={saveFile}
+                                  isLoading={isLoading}
+                                />
+                              </React.Suspense>
                             </div>
                             {previewOpen && (
                               <div className="w-[500px] lg:w-[600px] min-w-[350px] border-l border-zinc-900 overflow-hidden relative bg-zinc-950 flex flex-col shrink-0 animate-slide-in">
-                                <AppPreviewPanel
-                                  fileSystemTree={fileSystemTree}
-                                  onClose={() => setPreviewOpen(false)}
-                                  accentColor={accentColor}
-                                  selectedRepo={selectedRepo || undefined}
-                                  selectedBranch={selectedBranch}
-                                />
+                                <React.Suspense fallback={
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+                                    <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                                    <span className="font-mono text-[9px] animate-pulse">INITIALIZING PREVIEW...</span>
+                                  </div>
+                                }>
+                                  <AppPreviewPanel
+                                    fileSystemTree={fileSystemTree}
+                                    onClose={() => setPreviewOpen(false)}
+                                    accentColor={accentColor}
+                                    selectedRepo={selectedRepo || undefined}
+                                    selectedBranch={selectedBranch}
+                                  />
+                                </React.Suspense>
                               </div>
                             )}
                           </div>
@@ -549,47 +693,68 @@ export default function DesktopLayout({
                       ) : (
                         <div className="flex-1 flex overflow-hidden relative">
                           <div className="flex-1 overflow-hidden relative">
-                            <WelcomeScreen
-                              token={token}
-                              user={user}
-                              selectedRepo={selectedRepo}
-                              selectedBranch={selectedBranch}
-                              onSelectSection={(sec) => {
-                                setActiveSection(sec);
-                              }}
-                              onTriggerOAuth={onTriggerOAuth}
-                              onTogglePreview={selectedRepo ? handleTogglePreview : undefined}
-                              previewOpen={previewOpen}
-                            />
+                            <React.Suspense fallback={
+                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+                                <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                                <span className="font-mono text-[9px] animate-pulse">LOADING START SCREEN...</span>
+                              </div>
+                            }>
+                              <WelcomeScreen
+                                token={token}
+                                user={user}
+                                selectedRepo={selectedRepo}
+                                selectedBranch={selectedBranch}
+                                onSelectSection={(sec) => {
+                                  setActiveSection(sec);
+                                }}
+                                onTriggerOAuth={onTriggerOAuth}
+                                onTogglePreview={selectedRepo ? handleTogglePreview : undefined}
+                                previewOpen={previewOpen}
+                              />
+                            </React.Suspense>
                           </div>
                           {previewOpen && selectedRepo && (
                             <div className="w-[500px] lg:w-[600px] min-w-[350px] border-l border-zinc-900 overflow-hidden relative bg-zinc-950 flex flex-col shrink-0 animate-slide-in">
-                              <AppPreviewPanel
-                                fileSystemTree={fileSystemTree}
-                                onClose={() => setPreviewOpen(false)}
-                                accentColor={accentColor}
-                                selectedRepo={selectedRepo}
+                              <React.Suspense fallback={
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+                                  <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                                  <span className="font-mono text-[9px] animate-pulse">INITIALIZING PREVIEW...</span>
+                                </div>
+                              }>
+                                <AppPreviewPanel
+                                  fileSystemTree={fileSystemTree}
+                                  onClose={() => setPreviewOpen(false)}
+                                  accentColor={accentColor}
+                                  selectedRepo={selectedRepo}
                                   selectedBranch={selectedBranch}
                                 />
-                              </div>
-                            )}
-                          </div>
+                              </React.Suspense>
+                            </div>
+                          )}
+                        </div>
                         )}
                       </>
                     )}
                   </div>
 
                 {/* 4. AI Coding Companion Panel (Right Sidebar) */}
-                <AiCompanionPanel
-                  isOpen={aiPanelOpen}
-                  onToggle={handleToggleAiPanel}
-                  activeFile={activeFile}
-                  fileSystemTree={fileSystemTree}
-                  onApplyCode={(code) => {
-                    updateEditor(code);
-                  }}
-                  accentColor={accentColor}
-                />
+                <React.Suspense fallback={
+                  <div className="w-80 border-l border-zinc-900 bg-zinc-950 h-full flex flex-col items-center justify-center gap-2 text-zinc-500 font-mono text-xs">
+                    <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                    <span className="animate-pulse text-[10px]">LOADING AI ASSISTANT...</span>
+                  </div>
+                }>
+                  <AiCompanionPanel
+                    isOpen={aiPanelOpen}
+                    onToggle={handleToggleAiPanel}
+                    activeFile={activeFile}
+                    fileSystemTree={fileSystemTree}
+                    onApplyCode={(code) => {
+                      updateEditor(code);
+                    }}
+                    accentColor={accentColor}
+                  />
+                </React.Suspense>
 
               </div>
 

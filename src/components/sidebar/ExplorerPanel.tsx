@@ -219,7 +219,7 @@ export default function ExplorerPanel({
           Gothwad Ai Studio requires an authorized connection to GitHub to browse repositories, explore files, or stage ZIP modifications in {tabName}.
         </p>
         <button
-          onClick={() => onSelectSection?.("source_control")}
+          onClick={() => onSelectSection?.("github")}
           className="w-full bg-[#375a7f] hover:bg-[#375a7f]/95 text-white py-1.5 px-3 rounded font-bold font-mono text-[9px] uppercase tracking-wider transition-colors cursor-pointer shrink-0"
           style={{ backgroundColor: accentColor }}
         >

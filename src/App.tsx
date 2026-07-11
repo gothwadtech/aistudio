@@ -4,8 +4,9 @@ import { useOAuth } from "./hooks/useOAuth";
 import { SidebarSection } from "./components/ActivityBar";
 import { GrixFileNode } from "./types/github";
 import { safeStorage } from "./utils/safeStorage";
-import MobileLayout from "./components/MobileLayout";
-import DesktopLayout from "./components/DesktopLayout";
+
+const MobileLayout = React.lazy(() => import("./components/MobileLayout"));
+const DesktopLayout = React.lazy(() => import("./components/DesktopLayout"));
 
 export default function App() {
   const {
@@ -33,11 +34,19 @@ export default function App() {
     refreshRepos
   } = useGitHub();
 
-  const [isMobile, setIsMobile] = useState<boolean>(false);
   const [desktopMode, setDesktopMode] = useState<boolean>(() => {
     const saved = safeStorage.getItem("gothwad_studio_desktop_mode");
     return saved === "true";
   });
+
+  const [isMobileWidth, setIsMobileWidth] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth < 1024;
+    }
+    return true;
+  });
+
+  const isMobile = isMobileWidth && !desktopMode;
 
   const handleDesktopModeChange = (enabled: boolean) => {
     setDesktopMode(enabled);
@@ -50,6 +59,61 @@ export default function App() {
     return (saved === "software" ? "software" : "chat");
   });
 
+  const [chatSessions, setChatSessions] = useState<any[]>(() => {
+    const saved = safeStorage.getItem("gothwad_studio_chat_sessions");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((s: any) => ({
+            ...s,
+            messages: (s.messages || []).map((m: any) => ({
+              ...m,
+              timestamp: new Date(m.timestamp)
+            }))
+          }));
+        }
+      } catch (e) {
+        console.error("Error parsing saved sessions", e);
+      }
+    }
+    const defaultId = Date.now().toString();
+    return [{
+      id: defaultId,
+      title: "Welcome Session",
+      messages: [
+        {
+          id: "welcome",
+          role: "assistant",
+          content: "Welcome to **Gothwad Ai Studio Chat Workstation**!\n\nThis is a high-fidelity interactive chat sandbox styled like Google AI Studio. You can chat with advanced free or premium models, craft deep system instructions, configure inference parameters (temperature, token ceilings), and test complex prompt pipelines.\n\nType your query below to begin, or adjust the parameter console!",
+          timestamp: new Date()
+        }
+      ],
+      timestamp: Date.now(),
+      selectedModel: "google/gemini-2.5-flash",
+      systemInstruction: "You are an elite AI assistant trained by Google. Respond with precise, high-fidelity details, formatting code elegantly using Markdown.",
+      temperature: 0.7,
+      maxTokens: 2048
+    }];
+  });
+
+  const [activeChatSessionId, setActiveChatSessionId] = useState<string>(() => {
+    const savedActiveId = safeStorage.getItem("gothwad_studio_active_session_id");
+    return savedActiveId || (chatSessions[0]?.id || Date.now().toString());
+  });
+
+  const [customApiKey, setCustomApiKey] = useState(() => safeStorage.getItem("gothwad_ai_key") || "");
+
+  const handleSetActiveChatSessionId = (id: string) => {
+    setActiveChatSessionId(id);
+    safeStorage.setItem("gothwad_studio_active_session_id", id);
+  };
+
+  const handleUpdateChatSessions = (updated: any[]) => {
+    setChatSessions(updated);
+    safeStorage.setItem("gothwad_studio_chat_sessions", JSON.stringify(updated));
+  };
+
   const handleSetActiveStudio = (studio: "chat" | "software") => {
     setActiveStudio(studio);
     safeStorage.setItem("gothwad_studio_active_studio", studio);
@@ -58,22 +122,10 @@ export default function App() {
   const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (desktopMode) {
-        setIsMobile(false);
-      } else {
-        setIsMobile(window.innerWidth < 768);
-      }
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [desktopMode]);
-
-  useEffect(() => {
     const handleHeightOverride = () => {
       const height = window.innerHeight;
       document.documentElement.style.setProperty("--true-height", `${height}px`);
+      setIsMobileWidth(window.innerWidth < 1024);
     };
     handleHeightOverride();
     window.addEventListener("resize", handleHeightOverride);
@@ -257,21 +309,11 @@ export default function App() {
     loadDirectory(path);
   };
 
-  const containerStyle: React.CSSProperties = isMobile ? {
+  const containerStyle: React.CSSProperties = {
     position: "relative",
     width: "100%",
     height: "var(--true-height, 100dvh)",
     overflow: "hidden",
-  } : {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: `${100 / uiScale}%`,
-    height: `${100 / uiScale}%`,
-    transform: `scale(${uiScale})`,
-    transformOrigin: "top left",
-    maxWidth: "none",
-    maxHeight: "none",
   };
 
   return (
@@ -279,112 +321,133 @@ export default function App() {
       style={containerStyle}
       className="flex flex-col bg-zinc-950 text-zinc-300 selection:bg-zinc-850 select-none overflow-hidden font-sans relative"
     >
-      {!desktopMode ? (
-        <MobileLayout
-          activeStudio={activeStudio}
-          isDarkActive={isDarkActive}
-          isLeftDrawerOpen={isLeftDrawerOpen}
-          setIsLeftDrawerOpen={setIsLeftDrawerOpen}
-          accentColor={accentColor}
-          selectedRepo={selectedRepo}
-          activeFile={activeFile}
-          token={token}
-          selectRepo={selectRepo}
-          logout={logout}
-          isMobile={isMobile}
-          mobileActiveTab={mobileActiveTab}
-          setMobileActiveTab={setMobileActiveTab}
-          activeSection={activeSection}
-          setActiveSection={setActiveSection}
-          user={user}
-          repos={repos}
-          branches={branches}
-          selectedBranch={selectedBranch}
-          fileSystemTree={fileSystemTree}
-          isLoading={isLoading}
-          error={error}
-          patInput={patInput}
-          onPatInputChange={setPatInput}
-          onPatSubmit={handlePatLoginSubmit}
-          onTriggerOAuth={triggerOAuthLogin}
-          onSelectRepo={handleSelectRepo}
-          onSelectBranch={selectBranch}
-          onToggleDir={toggleDirectoryExpand}
-          onSelectFile={handleSelectFile}
-          setActiveFile={setActiveFile}
-          loadDirectory={loadDirectory}
-          syncZipFiles={syncZipFiles}
-          refreshRepos={refreshRepos}
-          authConfig={authConfig}
-          uiScale={uiScale}
-          onUiScaleChange={handleUiScaleChange}
-          themeMode={themeMode}
-          onThemeModeChange={handleThemeModeChange}
-          onAccentColorChange={handleAccentColorChange}
-          fontFamily={fontFamily}
-          onFontFamilyChange={handleFontFamilyChange}
-          desktopMode={desktopMode}
-          onDesktopModeChange={handleDesktopModeChange}
-          openTabs={openTabs}
-          updateEditor={updateEditor}
-          saveFile={saveFile}
-          editorContent={editorContent}
-          handleSetActiveStudio={handleSetActiveStudio}
-          handleCloseTab={handleCloseTab}
-        />
-      ) : (
-        <DesktopLayout
-          accentColor={accentColor}
-          activeStudio={activeStudio}
-          handleSetActiveStudio={handleSetActiveStudio}
-          user={user}
-          isMobile={isMobile}
-          activeSection={activeSection}
-          setActiveSection={setActiveSection}
-          selectedRepo={selectedRepo}
-          selectedBranch={selectedBranch}
-          fileSystemTree={fileSystemTree}
-          activeFile={activeFile}
-          logout={logout}
-          token={token}
-          repos={repos}
-          branches={branches}
-          isLoading={isLoading}
-          error={error}
-          patInput={patInput}
-          onPatInputChange={setPatInput}
-          onPatSubmit={handlePatLoginSubmit}
-          onTriggerOAuth={triggerOAuthLogin}
-          onSelectRepo={handleSelectRepo}
-          onSelectBranch={selectBranch}
-          onToggleDir={toggleDirectoryExpand}
-          onSelectFile={handleSelectFile}
-          setActiveFile={setActiveFile}
-          loadDirectory={loadDirectory}
-          syncZipFiles={syncZipFiles}
-          refreshRepos={refreshRepos}
-          authConfig={authConfig}
-          uiScale={uiScale}
-          onUiScaleChange={handleUiScaleChange}
-          themeMode={themeMode}
-          onThemeModeChange={handleThemeModeChange}
-          onAccentColorChange={handleAccentColorChange}
-          fontFamily={fontFamily}
-          onFontFamilyChange={handleFontFamilyChange}
-          desktopMode={desktopMode}
-          onDesktopModeChange={handleDesktopModeChange}
-          previewOpen={previewOpen}
-          handleTogglePreview={handleTogglePreview}
-          setPreviewOpen={setPreviewOpen}
-          openTabs={openTabs}
-          handleCloseTab={handleCloseTab}
-          editorContent={editorContent}
-          updateEditor={updateEditor}
-          saveFile={saveFile}
-          aiPanelOpen={aiPanelOpen}
-          handleToggleAiPanel={handleToggleAiPanel}
-        />
-      )}
+      <React.Suspense fallback={
+        <div className="flex h-screen w-screen items-center justify-center bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-5 w-5 animate-spin rounded-full border-t-2 border-r-2 border-zinc-400" style={{ borderTopColor: accentColor }} />
+            <span className="font-mono text-[10px] animate-pulse">INITIALIZING GOTHWAD WORKSPACE...</span>
+          </div>
+        </div>
+      }>
+        {isMobile ? (
+          <MobileLayout
+            activeStudio={activeStudio}
+            isDarkActive={isDarkActive}
+            isLeftDrawerOpen={isLeftDrawerOpen}
+            setIsLeftDrawerOpen={setIsLeftDrawerOpen}
+            accentColor={accentColor}
+            selectedRepo={selectedRepo}
+            activeFile={activeFile}
+            token={token}
+            selectRepo={selectRepo}
+            logout={logout}
+            isMobile={isMobile}
+            mobileActiveTab={mobileActiveTab}
+            setMobileActiveTab={setMobileActiveTab}
+            activeSection={activeSection}
+            setActiveSection={setActiveSection}
+            user={user}
+            repos={repos}
+            branches={branches}
+            selectedBranch={selectedBranch}
+            fileSystemTree={fileSystemTree}
+            isLoading={isLoading}
+            error={error}
+            patInput={patInput}
+            onPatInputChange={setPatInput}
+            onPatSubmit={handlePatLoginSubmit}
+            onTriggerOAuth={triggerOAuthLogin}
+            onSelectRepo={handleSelectRepo}
+            onSelectBranch={selectBranch}
+            onToggleDir={toggleDirectoryExpand}
+            onSelectFile={handleSelectFile}
+            setActiveFile={setActiveFile}
+            loadDirectory={loadDirectory}
+            syncZipFiles={syncZipFiles}
+            refreshRepos={refreshRepos}
+            authConfig={authConfig}
+            uiScale={uiScale}
+            onUiScaleChange={handleUiScaleChange}
+            themeMode={themeMode}
+            onThemeModeChange={handleThemeModeChange}
+            onAccentColorChange={handleAccentColorChange}
+            fontFamily={fontFamily}
+            onFontFamilyChange={handleFontFamilyChange}
+            desktopMode={desktopMode}
+            onDesktopModeChange={handleDesktopModeChange}
+            openTabs={openTabs}
+            updateEditor={updateEditor}
+            saveFile={saveFile}
+            editorContent={editorContent}
+            handleSetActiveStudio={handleSetActiveStudio}
+            handleCloseTab={handleCloseTab}
+            chatSessions={chatSessions}
+            activeChatSessionId={activeChatSessionId}
+            onSetActiveChatSessionId={handleSetActiveChatSessionId}
+            onUpdateChatSessions={handleUpdateChatSessions}
+            customApiKey={customApiKey}
+            onSetCustomApiKey={setCustomApiKey}
+          />
+        ) : (
+          <DesktopLayout
+            activeStudio={activeStudio}
+            handleSetActiveStudio={handleSetActiveStudio}
+            accentColor={accentColor}
+            selectedRepo={selectedRepo}
+            activeFile={activeFile}
+            token={token}
+            logout={logout}
+            isMobile={isMobile}
+            activeSection={activeSection}
+            setActiveSection={setActiveSection}
+            user={user}
+            repos={repos}
+            branches={branches}
+            selectedBranch={selectedBranch}
+            fileSystemTree={fileSystemTree}
+            isLoading={isLoading}
+            error={error}
+            patInput={patInput}
+            onPatInputChange={setPatInput}
+            onPatSubmit={handlePatLoginSubmit}
+            onTriggerOAuth={triggerOAuthLogin}
+            onSelectRepo={handleSelectRepo}
+            onSelectBranch={selectBranch}
+            onToggleDir={toggleDirectoryExpand}
+            onSelectFile={handleSelectFile}
+            setActiveFile={setActiveFile}
+            loadDirectory={loadDirectory}
+            syncZipFiles={syncZipFiles}
+            refreshRepos={refreshRepos}
+            authConfig={authConfig}
+            uiScale={uiScale}
+            onUiScaleChange={handleUiScaleChange}
+            themeMode={themeMode}
+            onThemeModeChange={handleThemeModeChange}
+            onAccentColorChange={handleAccentColorChange}
+            fontFamily={fontFamily}
+            onFontFamilyChange={handleFontFamilyChange}
+            desktopMode={desktopMode}
+            onDesktopModeChange={handleDesktopModeChange}
+            previewOpen={previewOpen}
+            handleTogglePreview={handleTogglePreview}
+            setPreviewOpen={setPreviewOpen}
+            openTabs={openTabs}
+            handleCloseTab={handleCloseTab}
+            editorContent={editorContent}
+            updateEditor={updateEditor}
+            saveFile={saveFile}
+            aiPanelOpen={aiPanelOpen}
+            handleToggleAiPanel={handleToggleAiPanel}
+            chatSessions={chatSessions}
+            activeChatSessionId={activeChatSessionId}
+            onSetActiveChatSessionId={handleSetActiveChatSessionId}
+            onUpdateChatSessions={handleUpdateChatSessions}
+            customApiKey={customApiKey}
+            onSetCustomApiKey={setCustomApiKey}
+          />
+        )}
+      </React.Suspense>
     </div>
   );
 }

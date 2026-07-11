@@ -1,12 +1,18 @@
 import React from "react";
 import { GrixFileNode } from "../types/github";
 import MobileHeader from "./MobileHeader";
-import ChatStudio from "../features/chatai/ChatStudio";
 import PrimarySidebar from "./PrimarySidebar";
-import CodeEditor from "./CodeEditor";
-import WelcomeScreen from "./WelcomeScreen";
-import AppPreviewPanel from "./AppPreviewPanel";
-import AiCompanionPanel from "./AiCompanionPanel";
+import SettingsPanel from "./sidebar/SettingsPanel";
+import GothwadAuthPanel from "./sidebar/GothwadAuthPanel";
+import ExplorerPanel from "./sidebar/ExplorerPanel";
+import SourceControlPanel from "./sidebar/SourceControlPanel";
+
+const ChatStudio = React.lazy(() => import("../features/chatai/ChatStudio"));
+const CodeEditor = React.lazy(() => import("./CodeEditor"));
+const WelcomeScreen = React.lazy(() => import("./WelcomeScreen"));
+const AppPreviewPanel = React.lazy(() => import("./AppPreviewPanel"));
+const AiCompanionPanel = React.lazy(() => import("./AiCompanionPanel"));
+const IntegrationsPanel = React.lazy(() => import("./IntegrationsPanel"));
 import {
   X,
   Eye,
@@ -18,7 +24,8 @@ import {
   Settings,
   Menu,
   MessageSquare,
-  FileCode2
+  FileCode2,
+  FolderTree
 } from "lucide-react";
 
 interface MobileLayoutProps {
@@ -35,7 +42,7 @@ interface MobileLayoutProps {
   isMobile: boolean;
   mobileActiveTab: "explorer" | "editor" | "git" | "preview" | "ai" | "settings";
   setMobileActiveTab: (tab: "explorer" | "editor" | "git" | "preview" | "ai" | "settings") => void;
-  activeSection: "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud";
+  activeSection: "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud" | "login";
   setActiveSection: (section: any) => void;
   user: any;
   repos: any[];
@@ -72,6 +79,12 @@ interface MobileLayoutProps {
   editorContent: string;
   handleSetActiveStudio: (studio: "chat" | "software") => void;
   handleCloseTab: (path: string, e: React.MouseEvent) => void;
+  chatSessions: any[];
+  activeChatSessionId: string;
+  onSetActiveChatSessionId: (id: string) => void;
+  onUpdateChatSessions: (sessions: any[]) => void;
+  customApiKey: string;
+  onSetCustomApiKey: (key: string) => void;
 }
 
 export default function MobileLayout({
@@ -124,47 +137,19 @@ export default function MobileLayout({
   saveFile,
   editorContent,
   handleSetActiveStudio,
-  handleCloseTab
+  handleCloseTab,
+  chatSessions,
+  activeChatSessionId,
+  onSetActiveChatSessionId,
+  onUpdateChatSessions,
+  customApiKey,
+  onSetCustomApiKey
 }: MobileLayoutProps) {
   return (
     <div className="flex-1 flex flex-col overflow-hidden w-full h-full relative">
       
       {/* 1. Mobile Top Branded Header */}
-      {activeStudio !== "software" ? (
-        <div 
-          className="h-14 border-b flex items-center justify-between px-3 shrink-0 z-40 transition-all duration-200"
-          style={{ 
-            backgroundColor: isDarkActive ? "#121214" : "#ffffff", 
-            borderColor: isDarkActive ? "#1c1c1e" : "#e4e4e7" 
-          }}
-        >
-          <div className="flex items-center gap-2">
-            {/* Left Drawer triggers */}
-            <button 
-              onClick={() => setIsLeftDrawerOpen(true)}
-              className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-850 cursor-pointer transition-all active:scale-95 flex items-center justify-center"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div className="flex flex-col">
-              <span className="text-[11px] font-mono font-bold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-1">
-                Gothwad Ai Studio
-              </span>
-              <span className="text-[8.5px] font-mono font-semibold text-zinc-500 uppercase tracking-wider">
-                {activeStudio === "chat" && "AI Chat Playground"}
-              </span>
-            </div>
-          </div>
-
-          {/* Top right quick theme toggle */}
-          <button
-            onClick={() => onThemeModeChange(isDarkActive ? "light" : "dark")}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-850 cursor-pointer transition-all active:scale-95 flex items-center justify-center text-xs"
-          >
-            {isDarkActive ? "☀️" : "🌙"}
-          </button>
-        </div>
-      ) : (
+      {activeStudio === "software" && (
         <MobileHeader
           isDarkActive={isDarkActive}
           accentColor={accentColor}
@@ -181,102 +166,193 @@ export default function MobileLayout({
       {/* 2. Responsive Main Active Content Frame */}
       <div className="flex-1 w-full overflow-hidden relative flex flex-col bg-zinc-950">
         {activeStudio === "chat" && (
-          <ChatStudio accentColor={accentColor} isMobile={isMobile} />
+          <React.Suspense fallback={
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+              <div className="h-5 w-5 animate-spin rounded-full border-t-2 border-r-2 border-zinc-400" style={{ borderTopColor: accentColor }} />
+              <span className="font-mono text-[10px] animate-pulse">LOADING CHAT STUDIO...</span>
+            </div>
+          }>
+            <ChatStudio 
+              accentColor={accentColor} 
+              isMobile={isMobile} 
+              onOpenMenu={() => setIsLeftDrawerOpen(true)}
+              sessions={chatSessions}
+              activeSessionId={activeChatSessionId}
+              onSetActiveSessionId={onSetActiveChatSessionId}
+              onUpdateSessions={onUpdateChatSessions}
+              customApiKey={customApiKey}
+              onSetCustomApiKey={onSetCustomApiKey}
+            />
+          </React.Suspense>
         )}
 
         {activeStudio === "software" && (
           <>
             {/* Tab view switches */}
             {mobileActiveTab === "explorer" && (
-              <PrimarySidebar
-                token={token}
-                activeSection={activeSection}
-                user={user}
-                repos={repos}
-                selectedRepo={selectedRepo}
-                branches={branches}
-                selectedBranch={selectedBranch}
-                fileSystemTree={fileSystemTree}
-                activeFile={activeFile}
-                isLoading={isLoading}
-                error={error}
-                patInput={patInput}
-                onPatInputChange={onPatInputChange}
-                onPatSubmit={onPatSubmit}
-                onTriggerOAuth={onTriggerOAuth}
-                onSelectRepo={onSelectRepo}
-                onSelectBranch={onSelectBranch}
-                onToggleDir={onToggleDir}
-                onSelectFile={onSelectFile}
-                setActiveFile={setActiveFile}
-                loadDirectory={loadDirectory}
-                syncZipFiles={syncZipFiles}
-                refreshRepos={refreshRepos}
-                onLogout={logout}
-                authConfig={authConfig}
-                uiScale={uiScale}
-                onUiScaleChange={onUiScaleChange}
-                themeMode={themeMode}
-                onThemeModeChange={onThemeModeChange}
-                accentColor={accentColor}
-                onAccentColorChange={onAccentColorChange}
-                fontFamily={fontFamily}
-                onFontFamilyChange={onFontFamilyChange}
-                onSelectSection={(sec) => {
-                  setActiveSection(sec);
-                  if (sec === "source_control" || sec === "unpacker") setMobileActiveTab("git");
-                }}
-                isMobile={true}
-                desktopMode={desktopMode}
-                onDesktopModeChange={onDesktopModeChange}
-              />
-            )}
+              <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950">
+                {activeSection === "explorer" && (
+                  <ExplorerPanel
+                    token={token}
+                    repos={repos}
+                    selectedRepo={selectedRepo}
+                    branches={branches}
+                    selectedBranch={selectedBranch}
+                    fileSystemTree={fileSystemTree}
+                    activeFile={activeFile}
+                    isLoading={isLoading}
+                    accentColor={accentColor}
+                    onSelectRepo={onSelectRepo}
+                    onSelectBranch={onSelectBranch}
+                    onToggleDir={onToggleDir}
+                    onSelectFile={(file) => {
+                      onSelectFile(file);
+                      setMobileActiveTab("editor");
+                    }}
+                    setActiveFile={setActiveFile}
+                    loadDirectory={loadDirectory}
+                    refreshRepos={refreshRepos}
+                    onSelectSection={(sec) => {
+                      setActiveSection(sec);
+                    }}
+                  />
+                )}
 
-            {mobileActiveTab === "git" && (
-              <PrimarySidebar
-                token={token}
-                activeSection={activeSection === "unpacker" ? "unpacker" : "source_control"}
-                user={user}
-                repos={repos}
-                selectedRepo={selectedRepo}
-                branches={branches}
-                selectedBranch={selectedBranch}
-                fileSystemTree={fileSystemTree}
-                activeFile={activeFile}
-                isLoading={isLoading}
-                error={error}
-                patInput={patInput}
-                onPatInputChange={onPatInputChange}
-                onPatSubmit={onPatSubmit}
-                onTriggerOAuth={onTriggerOAuth}
-                onSelectRepo={onSelectRepo}
-                onSelectBranch={onSelectBranch}
-                onToggleDir={onToggleDir}
-                onSelectFile={onSelectFile}
-                setActiveFile={setActiveFile}
-                loadDirectory={loadDirectory}
-                syncZipFiles={syncZipFiles}
-                refreshRepos={refreshRepos}
-                onLogout={logout}
-                authConfig={authConfig}
-                uiScale={uiScale}
-                onUiScaleChange={onUiScaleChange}
-                themeMode={themeMode}
-                onThemeModeChange={onThemeModeChange}
-                accentColor={accentColor}
-                onAccentColorChange={onAccentColorChange}
-                fontFamily={fontFamily}
-                onFontFamilyChange={onFontFamilyChange}
-                onSelectSection={(sec) => {
-                  setActiveSection(sec);
-                  if (sec === "explorer" || sec === "deployment" || sec === "cloud" || sec === "settings" || sec === "github") {
-                    setMobileActiveTab("explorer");
-                  }
-                }}
-                isMobile={true}
-                desktopMode={desktopMode}
-                onDesktopModeChange={onDesktopModeChange}
-              />
+                {(activeSection === "source_control" || activeSection === "unpacker") && (
+                  <SourceControlPanel
+                    token={token}
+                    user={user}
+                    onLogout={logout}
+                    patInput={patInput}
+                    onPatInputChange={onPatInputChange}
+                    onPatSubmit={onPatSubmit}
+                    onTriggerOAuth={onTriggerOAuth}
+                    authConfig={authConfig}
+                    accentColor={accentColor}
+                    selectedRepo={selectedRepo}
+                    selectedBranch={selectedBranch}
+                    activeFile={activeFile}
+                    syncZipFiles={syncZipFiles}
+                    isLoading={isLoading}
+                    loadDirectory={loadDirectory}
+                    setActiveFile={setActiveFile}
+                  />
+                )}
+
+                {activeSection === "deployment" && (
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-955">
+                    <div className="flex items-center justify-between border-b border-zinc-850 pb-2 mb-2">
+                      <h2 className="text-xs font-mono font-bold tracking-tight text-zinc-300 uppercase">Deployment & Preview</h2>
+                    </div>
+                    <React.Suspense fallback={
+                      <div className="flex h-32 flex-col items-center justify-center gap-2 text-zinc-500 font-mono text-xs">
+                        <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                        <span className="animate-pulse text-[10px]">LOADING DEPLOYMENT...</span>
+                      </div>
+                    }>
+                      <IntegrationsPanel
+                        mode="deployment"
+                        token={token}
+                        user={user}
+                        onLogout={logout}
+                        patInput={patInput}
+                        onPatInputChange={onPatInputChange}
+                        onPatSubmit={onPatSubmit}
+                        onTriggerOAuth={onTriggerOAuth}
+                        authConfig={authConfig}
+                        accentColor={accentColor}
+                      />
+                    </React.Suspense>
+                  </div>
+                )}
+
+                {activeSection === "cloud" && (
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-955">
+                    <div className="flex items-center justify-between border-b border-zinc-850 pb-2 mb-2">
+                      <h2 className="text-xs font-mono font-bold tracking-tight text-zinc-300 uppercase">Cloud Services & DB</h2>
+                    </div>
+                    <React.Suspense fallback={
+                      <div className="flex h-32 flex-col items-center justify-center gap-2 text-zinc-500 font-mono text-xs">
+                        <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                        <span className="animate-pulse text-[10px]">LOADING CLOUD GATEWAY...</span>
+                      </div>
+                    }>
+                      <IntegrationsPanel
+                        mode="cloud"
+                        token={token}
+                        user={user}
+                        onLogout={logout}
+                        patInput={patInput}
+                        onPatInputChange={onPatInputChange}
+                        onPatSubmit={onPatSubmit}
+                        onTriggerOAuth={onTriggerOAuth}
+                        authConfig={authConfig}
+                        accentColor={accentColor}
+                      />
+                    </React.Suspense>
+                  </div>
+                )}
+
+                {activeSection === "github" && (
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-955">
+                    <div className="flex items-center justify-between border-b border-zinc-850 pb-2 mb-2">
+                      <h2 className="text-xs font-mono font-bold tracking-tight text-zinc-300 uppercase">GitHub Integration</h2>
+                    </div>
+                    <React.Suspense fallback={
+                      <div className="flex h-32 flex-col items-center justify-center gap-2 text-zinc-500 font-mono text-xs">
+                        <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                        <span className="animate-pulse text-[10px]">LOADING GITHUB MODULE...</span>
+                      </div>
+                    }>
+                      <IntegrationsPanel
+                        mode="github"
+                        token={token}
+                        user={user}
+                        onLogout={logout}
+                        patInput={patInput}
+                        onPatInputChange={onPatInputChange}
+                        onPatSubmit={onPatSubmit}
+                        onTriggerOAuth={onTriggerOAuth}
+                        authConfig={authConfig}
+                        accentColor={accentColor}
+                      />
+                    </React.Suspense>
+                  </div>
+                )}
+
+                {activeSection === "settings" && (
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-955">
+                    <div className="flex items-center justify-between border-b border-zinc-850 pb-2 mb-2">
+                      <h2 className="text-xs font-mono font-bold tracking-tight text-zinc-300 uppercase">Studio Settings</h2>
+                    </div>
+                    <SettingsPanel
+                      themeMode={themeMode}
+                      onThemeModeChange={onThemeModeChange}
+                      accentColor={accentColor}
+                      onAccentColorChange={onAccentColorChange}
+                      fontFamily={fontFamily}
+                      onFontFamilyChange={onFontFamilyChange}
+                      uiScale={uiScale}
+                      onUiScaleChange={onUiScaleChange}
+                      desktopMode={false}
+                      onDesktopModeChange={() => {}}
+                      token={token}
+                      onLogout={logout}
+                      user={user}
+                      showCompactTitle={true}
+                    />
+                  </div>
+                )}
+
+                {activeSection === "login" && (
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-955">
+                    <div className="flex items-center justify-between border-b border-zinc-850 pb-2 mb-2">
+                      <h2 className="text-xs font-mono font-bold tracking-tight text-zinc-300 uppercase">Login Account</h2>
+                    </div>
+                    <GothwadAuthPanel accentColor={accentColor} />
+                  </div>
+                )}
+              </div>
             )}
 
             {mobileActiveTab === "editor" && (
@@ -314,30 +390,41 @@ export default function MobileLayout({
                     </div>
 
                     <div className="flex-1 overflow-hidden relative">
-                      <CodeEditor
-                        activeFile={activeFile}
-                        editorContent={editorContent}
-                        onContentChange={updateEditor}
-                        onSave={saveFile}
-                        isLoading={isLoading}
-                      />
+                      <React.Suspense fallback={
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+                          <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                          <span className="font-mono text-[9px] animate-pulse">LOADING EDITOR...</span>
+                        </div>
+                      }>
+                        <CodeEditor
+                          activeFile={activeFile}
+                          editorContent={editorContent}
+                          onContentChange={updateEditor}
+                          onSave={saveFile}
+                          isLoading={isLoading}
+                        />
+                      </React.Suspense>
                     </div>
                   </div>
                 ) : (
-                  <WelcomeScreen
-                    token={token}
-                    user={user}
-                    selectedRepo={selectedRepo}
-                    selectedBranch={selectedBranch}
-                    onSelectSection={(sec) => {
-                      setActiveSection(sec);
-                      if (sec === "explorer") setMobileActiveTab("explorer");
-                      else if (sec === "source_control" || sec === "unpacker") setMobileActiveTab("git");
-                      else if (sec === "deployment" || sec === "cloud") setMobileActiveTab("explorer");
-                      else if (sec === "settings") setMobileActiveTab("settings");
-                    }}
-                    onTriggerOAuth={onTriggerOAuth}
-                  />
+                  <React.Suspense fallback={
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+                      <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                      <span className="font-mono text-[9px] animate-pulse">LOADING START SCREEN...</span>
+                    </div>
+                  }>
+                    <WelcomeScreen
+                      token={token}
+                      user={user}
+                      selectedRepo={selectedRepo}
+                      selectedBranch={selectedBranch}
+                      onSelectSection={(sec) => {
+                        setActiveSection(sec);
+                        setMobileActiveTab("explorer");
+                      }}
+                      onTriggerOAuth={onTriggerOAuth}
+                    />
+                  </React.Suspense>
                 )}
               </div>
             )}
@@ -345,13 +432,20 @@ export default function MobileLayout({
             {mobileActiveTab === "preview" && (
               <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden relative">
                 {selectedRepo ? (
-                  <AppPreviewPanel
-                    fileSystemTree={fileSystemTree}
-                    onClose={() => {}}
-                    accentColor={accentColor}
-                    selectedRepo={selectedRepo}
-                    selectedBranch={selectedBranch}
-                  />
+                  <React.Suspense fallback={
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+                      <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                      <span className="font-mono text-[9px] animate-pulse">INITIALIZING PREVIEW...</span>
+                    </div>
+                  }>
+                    <AppPreviewPanel
+                      fileSystemTree={fileSystemTree}
+                      onClose={() => {}}
+                      accentColor={accentColor}
+                      selectedRepo={selectedRepo}
+                      selectedBranch={selectedBranch}
+                    />
+                  </React.Suspense>
                 ) : (
                   <div className="flex-1 flex flex-col justify-center items-center text-center p-6 space-y-4">
                     <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 animate-pulse">
@@ -375,73 +469,30 @@ export default function MobileLayout({
 
             {mobileActiveTab === "ai" && (
               <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden relative">
-                <AiCompanionPanel
-                  isOpen={true}
-                  onToggle={() => {}}
-                  activeFile={activeFile}
-                  fileSystemTree={fileSystemTree}
-                  onApplyCode={(code) => {
-                    updateEditor(code);
-                    setMobileActiveTab("editor");
-                  }}
-                  accentColor={accentColor}
-                />
+                <React.Suspense fallback={
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+                    <div className="h-4 w-4 animate-spin rounded-full border-t border-zinc-500" style={{ borderTopColor: accentColor }} />
+                    <span className="font-mono text-[9px] animate-pulse">LOADING AI ASSISTANT...</span>
+                  </div>
+                }>
+                  <AiCompanionPanel
+                    isOpen={true}
+                    onToggle={() => {}}
+                    activeFile={activeFile}
+                    fileSystemTree={fileSystemTree}
+                    onApplyCode={(code) => {
+                      updateEditor(code);
+                      setMobileActiveTab("editor");
+                    }}
+                    accentColor={accentColor}
+                  />
+                </React.Suspense>
               </div>
-            )}
-
-            {mobileActiveTab === "settings" && (
-              <PrimarySidebar
-                token={token}
-                activeSection="settings"
-                user={user}
-                repos={repos}
-                selectedRepo={selectedRepo}
-                branches={branches}
-                selectedBranch={selectedBranch}
-                fileSystemTree={fileSystemTree}
-                activeFile={activeFile}
-                isLoading={isLoading}
-                error={error}
-                patInput={patInput}
-                onPatInputChange={onPatInputChange}
-                onPatSubmit={onPatSubmit}
-                onTriggerOAuth={onTriggerOAuth}
-                onSelectRepo={onSelectRepo}
-                onSelectBranch={onSelectBranch}
-                onToggleDir={onToggleDir}
-                onSelectFile={onSelectFile}
-                setActiveFile={setActiveFile}
-                loadDirectory={loadDirectory}
-                syncZipFiles={syncZipFiles}
-                refreshRepos={refreshRepos}
-                onLogout={logout}
-                authConfig={authConfig}
-                uiScale={uiScale}
-                onUiScaleChange={onUiScaleChange}
-                themeMode={themeMode}
-                onThemeModeChange={onThemeModeChange}
-                accentColor={accentColor}
-                onAccentColorChange={onAccentColorChange}
-                fontFamily={fontFamily}
-                onFontFamilyChange={onFontFamilyChange}
-                onSelectSection={(sec) => {
-                  setActiveSection(sec);
-                  if (sec === "explorer" || sec === "deployment" || sec === "cloud" || sec === "settings" || sec === "github") {
-                    setMobileActiveTab("explorer");
-                  } else if (sec === "source_control" || sec === "unpacker") {
-                    setMobileActiveTab("git");
-                  }
-                }}
-                isMobile={true}
-                desktopMode={desktopMode}
-                onDesktopModeChange={onDesktopModeChange}
-              />
             )}
           </>
         )}
 
       </div>
-
 
       {/* Left Drawer component */}
       {isLeftDrawerOpen && (
@@ -477,6 +528,7 @@ export default function MobileLayout({
               onToggleDir={onToggleDir}
               onSelectFile={(file) => {
                 onSelectFile(file);
+                setMobileActiveTab("editor");
                 setIsLeftDrawerOpen(false);
               }}
               setActiveFile={setActiveFile}
@@ -495,6 +547,7 @@ export default function MobileLayout({
               onFontFamilyChange={onFontFamilyChange}
               onSelectSection={(section) => {
                 setActiveSection(section);
+                setMobileActiveTab("explorer");
                 setIsLeftDrawerOpen(false);
               }}
               isMobile={true}
@@ -505,6 +558,14 @@ export default function MobileLayout({
                 handleSetActiveStudio(std);
                 setIsLeftDrawerOpen(false);
               }}
+              setMobileActiveTab={setMobileActiveTab}
+              chatSessions={chatSessions}
+              activeChatSessionId={activeChatSessionId}
+              onSetActiveChatSessionId={onSetActiveChatSessionId}
+              onUpdateChatSessions={onUpdateChatSessions}
+              customApiKey={customApiKey}
+              onSetCustomApiKey={onSetCustomApiKey}
+              onToggleSidebar={() => setIsLeftDrawerOpen(false)}
             />
           </div>
         </div>

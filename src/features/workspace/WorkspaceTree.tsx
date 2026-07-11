@@ -644,11 +644,6 @@ const WorkspaceTree = forwardRef<WorkspaceTreeRef, WorkspaceTreeProps>(({
               onContextMenu={(e) => handleContextMenu(e, node)}
             >
               <div className="flex items-center gap-2 overflow-hidden mr-2">
-                {isDir && (
-                  <span className="text-zinc-600">
-                    {node.isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                  </span>
-                )}
                 {getFileIcon(node.name, isDir, node.isOpen)}
                 <span className="text-xs font-mono truncate">{node.name}</span>
                 {node.isModified && (
@@ -656,52 +651,61 @@ const WorkspaceTree = forwardRef<WorkspaceTreeRef, WorkspaceTreeProps>(({
                 )}
               </div>
 
-              {/* Inline Action Hover Buttons */}
-              <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-all shrink-0">
+              <div className="flex items-center gap-2 shrink-0 ml-auto">
+                {/* Inline Action Hover Buttons */}
+                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-all shrink-0">
+                  {isDir && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerCreate(node.path, "file");
+                        }}
+                        className="p-1 text-zinc-500 hover:text-sky-400 hover:bg-sky-500/10 rounded transition-colors"
+                        title="New File"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerCreate(node.path, "dir");
+                        }}
+                        className="p-1 text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
+                        title="New Folder"
+                      >
+                        <FolderPlus className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerRename(node);
+                    }}
+                    className="p-1 text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded transition-colors"
+                    title="Rename"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerDelete(node);
+                    }}
+                    className="p-1 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Triangle folder expansion arrow placed at the very end of the row */}
                 {isDir && (
-                  <>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        triggerCreate(node.path, "file");
-                      }}
-                      className="p-1 text-zinc-500 hover:text-sky-400 hover:bg-sky-500/10 rounded transition-colors"
-                      title="New File"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        triggerCreate(node.path, "dir");
-                      }}
-                      className="p-1 text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
-                      title="New Folder"
-                    >
-                      <FolderPlus className="w-3.5 h-3.5" />
-                    </button>
-                  </>
+                  <span className="text-zinc-500 shrink-0 select-none">
+                    {node.isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                  </span>
                 )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    triggerRename(node);
-                  }}
-                  className="p-1 text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded transition-colors"
-                  title="Rename"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    triggerDelete(node);
-                  }}
-                  className="p-1 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                  title="Delete"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
               </div>
             </div>
           )}

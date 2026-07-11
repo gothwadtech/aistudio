@@ -405,7 +405,7 @@ app.post("/api/ai/chat", async (req, res) => {
     };
 
     const payload = {
-      model: selectedModel || "google/gemini-2.5-flash:free",
+      model: selectedModel || "google/gemini-2.5-flash",
       messages: openAiMessages,
       temperature: typeof temperature === "number" ? temperature : 0.2,
       max_tokens: typeof maxTokens === "number" ? maxTokens : 1500
@@ -447,10 +447,10 @@ app.post("/api/ai/chat", async (req, res) => {
           return attemptFetch(currentModel, 800, depth + 1);
         }
 
-        if (isProviderIssue && currentModel !== "google/gemini-2.5-flash:free") {
-          console.log("[AI server.ts] Retrying with fallback google/gemini-2.5-flash:free due to provider issue.");
-          finalModel = "google/gemini-2.5-flash:free";
-          return attemptFetch("google/gemini-2.5-flash:free", currentMaxTokens, depth + 1);
+        if (isProviderIssue && currentModel !== "google/gemini-2.5-flash") {
+          console.log("[AI server.ts] Retrying with fallback google/gemini-2.5-flash due to provider issue.");
+          finalModel = "google/gemini-2.5-flash";
+          return attemptFetch("google/gemini-2.5-flash", currentMaxTokens, depth + 1);
         }
 
         let parsedErr;
@@ -474,10 +474,10 @@ app.post("/api/ai/chat", async (req, res) => {
           return attemptFetch(currentModel, 800, depth + 1);
         }
 
-        if (isProvider && currentModel !== "google/gemini-2.5-flash:free") {
-          console.log("[AI server.ts] Retrying with fallback google/gemini-2.5-flash:free due to inline provider error.");
-          finalModel = "google/gemini-2.5-flash:free";
-          return attemptFetch("google/gemini-2.5-flash:free", currentMaxTokens, depth + 1);
+        if (isProvider && currentModel !== "google/gemini-2.5-flash") {
+          console.log("[AI server.ts] Retrying with fallback google/gemini-2.5-flash due to inline provider error.");
+          finalModel = "google/gemini-2.5-flash";
+          return attemptFetch("google/gemini-2.5-flash", currentMaxTokens, depth + 1);
         }
 
         throw new Error(errObj.message || errText);
@@ -486,10 +486,10 @@ app.post("/api/ai/chat", async (req, res) => {
       const content = data?.choices?.[0]?.message?.content;
       if (content === undefined || content === null) {
         console.warn("[AI server.ts] No choices or message content found in successful response. Data keys:", Object.keys(data));
-        if (currentModel !== "google/gemini-2.5-flash:free") {
-          console.log("[AI server.ts] Retrying with fallback google/gemini-2.5-flash:free due to missing message content.");
-          finalModel = "google/gemini-2.5-flash:free";
-          return attemptFetch("google/gemini-2.5-flash:free", currentMaxTokens, depth + 1);
+        if (currentModel !== "google/gemini-2.5-flash") {
+          console.log("[AI server.ts] Retrying with fallback google/gemini-2.5-flash due to missing message content.");
+          finalModel = "google/gemini-2.5-flash";
+          return attemptFetch("google/gemini-2.5-flash", currentMaxTokens, depth + 1);
         }
       }
 

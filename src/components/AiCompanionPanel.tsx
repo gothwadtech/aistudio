@@ -27,7 +27,7 @@ interface AiCompanionPanelProps {
 const POPULAR_MODELS = [
   { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nvidia Nemotron 550B (Free)", provider: "openrouter" },
   { value: "meta-llama/llama-3.3-70b-instruct:free", label: "Llama 3.3 70B (Free)", provider: "openrouter" },
-  { value: "google/gemini-2.5-flash:free", label: "Gemini 2.5 Flash (Free)", provider: "openrouter" },
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "openrouter" },
   { value: "qwen/qwen-2.5-coder-32b-instruct:free", label: "Qwen 2.5 Coder 32B (Free)", provider: "openrouter" },
   { value: "deepseek/deepseek-r1:free", label: "DeepSeek R1 Reasoning (Free)", provider: "openrouter" },
   { value: "deepseek/deepseek-chat", label: "DeepSeek V3 (Cheap Paid)", provider: "openrouter" },
@@ -387,7 +387,7 @@ export default function AiCompanionPanel({
                 {customApiKey && customApiKey.trim() !== "" ? (
                   <span className="text-emerald-400">üü¢ **Active Key**: Using your custom OpenRouter key (provided below) - Unlimited usage unlocked.</span>
                 ) : hasServerKey ? (
-                  <span className="text-blue-400">Ì†ΩÌ¥µ **Active Key**: Using Gothwad Ai Studio's host-level `.env` OpenRouter Key.</span>
+                  <span className="text-blue-400">üîµ **Active Key**: Using Gothwad Ai Studio's host-level `.env` OpenRouter Key.</span>
                 ) : (
                   <span className="text-red-400">‚ö†Ô∏è **Active Key**: No key detected. Please input your OpenRouter Key below or in host `.env`!</span>
                 )}
