@@ -84,6 +84,7 @@ export function useOAuth(
       })
       .catch(err => {
         console.error("Token exchange failed", err);
+        alert("GitHub Serverless Callback: Token exchange requires an active Express backend. Please use a GitHub Personal Access Token (PAT) under settings to log in on Cloudflare Pages/static hosting.");
       });
     }
 

@@ -256,9 +256,20 @@ export default function App() {
 
   useEffect(() => {
     fetch("/api/auth/config")
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("Offline");
+        return res.json();
+      })
       .then(data => setAuthConfig(data))
-      .catch(() => {});
+      .catch(() => {
+        // Fallback to client-side environment variables or location origin
+        const fallbackClient = (import.meta as any).env?.VITE_GITHUB_CLIENT_ID || "";
+        const fallbackUrl = (import.meta as any).env?.VITE_APP_URL || window.location.origin;
+        setAuthConfig({
+          clientId: fallbackClient,
+          appUrl: fallbackUrl
+        });
+      });
   }, []);
 
   useEffect(() => {

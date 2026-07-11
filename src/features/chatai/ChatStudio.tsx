@@ -10,6 +10,7 @@ import { Message } from "../ai/types";
 import { safeStorage } from "../../utils/safeStorage";
 import ChatMessageBubble from "../../components/ChatMessageBubble";
 import ChatInputBar from "../../components/ChatInputBar";
+import { callAiChat } from "../../utils/aiClient";
 
 interface ChatStudioProps {
   accentColor: string;
@@ -317,27 +318,16 @@ export default function ChatStudio({
       setModelStartTimes(prev => ({ ...prev, [modelVal]: startTime }));
       
       try {
-        const response = await fetch("/api/ai/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: currentMsgs,
-            selectedAgent: "custom",
-            apiProvider: "openrouter",
-            selectedModel: modelVal,
-            customApiKey: customApiKey || undefined,
-            systemInstructionOverride: systemInstruction,
-            temperature,
-            maxTokens
-          })
+        const resData = await callAiChat({
+          messages: currentMsgs,
+          selectedAgent: "custom",
+          selectedModel: modelVal,
+          customApiKey: customApiKey || undefined,
+          systemInstructionOverride: systemInstruction,
+          temperature,
+          maxTokens
         });
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP ${response.status}`);
-        }
-
-        const resData = await response.json();
         const responseText = resData.text || "No response received.";
         const durationSec = parseFloat(((Date.now() - startTime) / 1000).toFixed(2));
 

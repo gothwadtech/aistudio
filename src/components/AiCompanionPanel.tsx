@@ -15,6 +15,7 @@ import { getFlatFilePaths } from "../features/ai/utils/promptBuilder";
 import ChatHeader from "../features/ai/components/ChatHeader";
 import ChatMessageList from "../features/ai/components/ChatMessageList";
 import ChatInputBar from "./ChatInputBar";
+import { callAiChat } from "../utils/aiClient";
 
 interface AiCompanionPanelProps {
   isOpen: boolean;
@@ -152,15 +153,28 @@ export default function AiCompanionPanel({
     const savedKey = safeStorage.getItem("gothwad_ai_key");
     if (savedKey) setCustomApiKeyLocal(savedKey);
 
-    // Fetch config
-    fetch("/api/ai/config")
-      .then(res => res.json())
-      .then(data => {
-        if (data && typeof data.hasServerKey === "boolean") {
-          setHasServerKey(data.hasServerKey);
-        }
-      })
-      .catch(err => console.error("Failed to check server AI config:", err));
+    const isCloudflare = 
+      window.location.hostname === "aistudio.gothwadtech.com" || 
+      window.location.hostname.endsWith(".pages.dev") ||
+      window.location.hostname.endsWith(".cloudflare.com") ||
+      (!window.location.hostname.includes("run.app") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
+
+    if (isCloudflare) {
+      setHasServerKey(false);
+    } else {
+      // Fetch config
+      fetch("/api/ai/config")
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data.hasServerKey === "boolean") {
+            setHasServerKey(data.hasServerKey);
+          }
+        })
+        .catch(err => {
+          console.warn("Failed to check server AI config:", err);
+          setHasServerKey(false);
+        });
+    }
   }, []);
 
   // Sync to local storage
@@ -297,29 +311,18 @@ export default function AiCompanionPanel({
     try {
       const filePaths = getFlatFilePaths(fileSystemTree);
       
-      const response = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: updatedMessages,
-          activeFile,
-          workspaceFiles: filePaths,
-          selectedAgent: activeSession.selectedAgent,
-          apiProvider: "openrouter",
-          selectedModel: activeSession.selectedModel,
-          customApiKey: activeCustomApiKey || undefined,
-          systemInstructionOverride: activeSession.systemInstruction !== DEFAULT_SYSTEM_INSTRUCTION ? activeSession.systemInstruction : undefined,
-          temperature: activeSession.temperature,
-          maxTokens: activeSession.maxTokens
-        })
+      const resData = await callAiChat({
+        messages: updatedMessages,
+        activeFile,
+        workspaceFiles: filePaths,
+        selectedAgent: activeSession.selectedAgent,
+        selectedModel: activeSession.selectedModel,
+        customApiKey: activeCustomApiKey || undefined,
+        systemInstructionOverride: activeSession.systemInstruction !== DEFAULT_SYSTEM_INSTRUCTION ? activeSession.systemInstruction : undefined,
+        temperature: activeSession.temperature,
+        maxTokens: activeSession.maxTokens
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server returned HTTP ${response.status}`);
-      }
-
-      const resData = await response.json();
       const responseText = resData.text || "No response received from the OpenRouter model.";
       const keyStatusVal = resData.usedCustomKey ? "custom" : resData.usedServerKey ? "server" : "missing";
 
