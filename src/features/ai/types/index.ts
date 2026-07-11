@@ -5,6 +5,7 @@ export interface Message {
   timestamp: Date;
   agent?: string;
   keyStatus?: "custom" | "server" | "missing";
+  durationSec?: number;
 }
 
 export interface ContentBlock {

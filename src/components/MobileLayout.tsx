@@ -85,6 +85,8 @@ interface MobileLayoutProps {
   onUpdateChatSessions: (sessions: any[]) => void;
   customApiKey: string;
   onSetCustomApiKey: (key: string) => void;
+  appModels: any[];
+  onUpdateAppModels: (models: any[]) => void;
 }
 
 export default function MobileLayout({
@@ -143,13 +145,15 @@ export default function MobileLayout({
   onSetActiveChatSessionId,
   onUpdateChatSessions,
   customApiKey,
-  onSetCustomApiKey
+  onSetCustomApiKey,
+  appModels,
+  onUpdateAppModels
 }: MobileLayoutProps) {
   return (
     <div className="flex-1 flex flex-col overflow-hidden w-full h-full relative">
       
       {/* 1. Mobile Top Branded Header */}
-      {activeStudio === "software" && (
+      {activeStudio === "software" && mobileActiveTab !== "ai" && (
         <MobileHeader
           isDarkActive={isDarkActive}
           accentColor={accentColor}
@@ -182,6 +186,8 @@ export default function MobileLayout({
               onUpdateSessions={onUpdateChatSessions}
               customApiKey={customApiKey}
               onSetCustomApiKey={onSetCustomApiKey}
+              appModels={appModels}
+              onUpdateAppModels={onUpdateAppModels}
             />
           </React.Suspense>
         )}
@@ -340,6 +346,10 @@ export default function MobileLayout({
                       onLogout={logout}
                       user={user}
                       showCompactTitle={true}
+                      customApiKey={customApiKey}
+                      onSetCustomApiKey={onSetCustomApiKey}
+                      appModels={appModels}
+                      onUpdateAppModels={onUpdateAppModels}
                     />
                   </div>
                 )}
@@ -485,6 +495,10 @@ export default function MobileLayout({
                       setMobileActiveTab("editor");
                     }}
                     accentColor={accentColor}
+                    appModels={appModels}
+                    customApiKey={customApiKey}
+                    isMobile={true}
+                    onOpenMenu={() => setIsLeftDrawerOpen(true)}
                   />
                 </React.Suspense>
               </div>

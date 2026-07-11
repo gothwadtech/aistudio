@@ -4,6 +4,7 @@ import { useOAuth } from "./hooks/useOAuth";
 import { SidebarSection } from "./components/ActivityBar";
 import { GrixFileNode } from "./types/github";
 import { safeStorage } from "./utils/safeStorage";
+import { getAppModels, saveAppModels, AIModel } from "./utils/modelRegistry";
 
 const MobileLayout = React.lazy(() => import("./components/MobileLayout"));
 const DesktopLayout = React.lazy(() => import("./components/DesktopLayout"));
@@ -103,6 +104,17 @@ export default function App() {
   });
 
   const [customApiKey, setCustomApiKey] = useState(() => safeStorage.getItem("gothwad_ai_key") || "");
+  const [appModels, setAppModels] = useState<AIModel[]>(() => getAppModels());
+
+  const handleSetCustomApiKey = (key: string) => {
+    setCustomApiKey(key);
+    safeStorage.setItem("gothwad_ai_key", key);
+  };
+
+  const handleUpdateAppModels = (updated: AIModel[]) => {
+    setAppModels(updated);
+    saveAppModels(updated);
+  };
 
   const handleSetActiveChatSessionId = (id: string) => {
     setActiveChatSessionId(id);
@@ -386,7 +398,9 @@ export default function App() {
             onSetActiveChatSessionId={handleSetActiveChatSessionId}
             onUpdateChatSessions={handleUpdateChatSessions}
             customApiKey={customApiKey}
-            onSetCustomApiKey={setCustomApiKey}
+            onSetCustomApiKey={handleSetCustomApiKey}
+            appModels={appModels}
+            onUpdateAppModels={handleUpdateAppModels}
           />
         ) : (
           <DesktopLayout
@@ -444,7 +458,9 @@ export default function App() {
             onSetActiveChatSessionId={handleSetActiveChatSessionId}
             onUpdateChatSessions={handleUpdateChatSessions}
             customApiKey={customApiKey}
-            onSetCustomApiKey={setCustomApiKey}
+            onSetCustomApiKey={handleSetCustomApiKey}
+            appModels={appModels}
+            onUpdateAppModels={handleUpdateAppModels}
           />
         )}
       </React.Suspense>

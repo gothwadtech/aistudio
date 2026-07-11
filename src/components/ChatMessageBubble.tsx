@@ -8,6 +8,30 @@ export interface Message {
   timestamp: Date | number;
   agent?: string;
   keyStatus?: "custom" | "server" | "missing";
+  durationSec?: number;
+}
+
+const MODELS_MAP = [
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { value: "meta-llama/llama-3.3-70b-instruct:free", label: "Llama 3.3 70B" },
+  { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nemotron 550B" },
+  { value: "deepseek/deepseek-r1:free", label: "DeepSeek R1" },
+  { value: "qwen/qwen-2.5-coder-32b-instruct:free", label: "Qwen 2.5 Coder" },
+  { value: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet" }
+];
+
+function getModelLabel(modelKey: string | undefined): string {
+  if (!modelKey) return "Gothwad AI";
+  const found = MODELS_MAP.find(m => m.value === modelKey);
+  if (found) return found.label;
+  
+  // Format beautifully (e.g. "meta-llama/llama-3.3-70b-instruct:free" -> "Llama 3.3 70B")
+  const parts = modelKey.split("/");
+  let name = parts[parts.length - 1];
+  if (name.includes(":")) {
+    name = name.split(":")[0];
+  }
+  return name.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
 interface ChatMessageBubbleProps {
@@ -376,31 +400,36 @@ export default function ChatMessageBubble({
   };
 
   return (
-    <div className={`flex gap-3 max-w-3xl ${isUser ? "ml-auto flex-row-reverse" : "mr-auto"} items-start`}>
-      {/* Avatar */}
-      <div 
-        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
-          isUser 
-            ? "bg-zinc-900 text-zinc-300 border-zinc-800" 
-            : "bg-zinc-900 text-zinc-300 border-zinc-800"
-        }`}
-        style={isUser ? { backgroundColor: `${accentColor}15`, color: accentColor, borderColor: `${accentColor}20` } : {}}
-      >
-        {isUser ? (
-          <span className="text-xs font-mono font-bold">U</span>
-        ) : (
-          <Cpu className="w-3.5 h-3.5 text-zinc-400" style={{ color: msg.agent && agents ? agents[msg.agent]?.color : accentColor }} />
+    <div className="flex flex-col w-full space-y-3 pb-8 border-b-2 border-zinc-800/80 last:border-b-0">
+      {/* Header Avatar and Label Row */}
+      <div className={`flex items-center gap-1.5 px-1 select-none ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+        <div className="w-5.5 h-5.5 rounded-full flex items-center justify-center overflow-hidden shrink-0 shadow-sm bg-transparent">
+          <img 
+            src="/icon-512.png" 
+            alt={isUser ? "User" : getModelLabel(msg.agent)} 
+            className="w-full h-full object-cover filter brightness-110" 
+            referrerPolicy="no-referrer"
+          />
+        </div>
+        <span className="text-[10px] font-mono font-extrabold uppercase tracking-wider text-zinc-200">
+          {isUser ? "USER" : getModelLabel(msg.agent)}
+        </span>
+        {!isUser && (
+          <span className="ml-2 text-[10px] font-mono font-extrabold uppercase tracking-wider text-zinc-200">
+            WORKED FOR {msg.durationSec !== undefined ? msg.durationSec : "0.0"} SECONDS
+          </span>
         )}
       </div>
 
       {/* Message Body Bubble */}
-      <div className="space-y-1 min-w-0 flex-1">
-        <div className={`rounded-2xl p-3.5 ${
-          isUser 
-            ? "bg-zinc-900/60 text-zinc-200 rounded-tr-none border border-zinc-850 shadow-md" 
-            : "bg-zinc-900 text-zinc-300 rounded-tl-none border border-zinc-850 shadow-md"
-        }`}>
-          {parseMarkdown(msg.content).map((block, idx) => {
+      <div className={`w-full ${isUser ? "flex justify-end" : ""}`}>
+        {isUser ? (
+          <div className="bg-zinc-900/85 border border-zinc-800 text-zinc-100 rounded-2xl rounded-tr-none px-4 py-3 max-w-[85%] sm:max-w-xl shadow-md select-text text-xs leading-relaxed mb-1">
+            {msg.content}
+          </div>
+        ) : (
+          <div className="bg-transparent text-zinc-300 p-0 w-full select-text leading-relaxed">
+            {parseMarkdown(msg.content).map((block, idx) => {
             if (block.type === "code") {
               const blockId = `${msg.id}-block-${idx}`;
               return (
@@ -482,7 +511,8 @@ export default function ChatMessageBubble({
               </span>
             </div>
           )}
-        </div>
+          </div>
+        )}
 
         {/* Timestamp / Copy meta for standard text responses */}
         <div className={`flex items-center gap-3 px-1.5 text-[9.5px] font-mono text-zinc-550 ${isUser ? "justify-end" : ""}`}>

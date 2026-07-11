@@ -76,11 +76,21 @@ html.theme-light, :root.theme-light {
   --color-box-text: var(--box-text);
 
   --animate-ping-slow: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-slide-in-left: slide-in-left 0.22s ease-out;
 
   @keyframes ping-slow {
     75%, 100% {
       transform: scale(2);
       opacity: 0;
+    }
+  }
+
+  @keyframes slide-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
     }
   }
 }

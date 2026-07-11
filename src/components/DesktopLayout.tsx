@@ -70,6 +70,8 @@ interface DesktopLayoutProps {
   onUpdateChatSessions: (sessions: any[]) => void;
   customApiKey: string;
   onSetCustomApiKey: (key: string) => void;
+  appModels: any[];
+  onUpdateAppModels: (models: any[]) => void;
 }
 
 export default function DesktopLayout({
@@ -127,7 +129,9 @@ export default function DesktopLayout({
   onSetActiveChatSessionId,
   onUpdateChatSessions,
   customApiKey,
-  onSetCustomApiKey
+  onSetCustomApiKey,
+  appModels,
+  onUpdateAppModels
 }: DesktopLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState<boolean>(true);
 
@@ -339,6 +343,10 @@ export default function DesktopLayout({
                   token={token}
                   onLogout={logout}
                   user={user}
+                  customApiKey={customApiKey}
+                  onSetCustomApiKey={onSetCustomApiKey}
+                  appModels={appModels}
+                  onUpdateAppModels={onUpdateAppModels}
                 />
               </div>
             </div>
@@ -438,67 +446,6 @@ export default function DesktopLayout({
   return (
     <div className="flex-1 flex flex-col overflow-hidden w-full h-full">
       
-      {/* Top Row Branded Header & Switcher */}
-      <div className="h-14 bg-[#121214] border-b border-zinc-900 px-4 flex items-center justify-between shrink-0 font-sans z-40 select-none">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsSidebarOpen(prev => !prev)}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-850 cursor-pointer transition-all active:scale-95 flex items-center justify-center mr-1"
-            title="Toggle Sidebar"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div 
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-md" 
-            style={{ background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}aa 100%)` }}
-          >
-            <Sparkles className="w-4 h-4 text-white animate-pulse" />
-          </div>
-          <div>
-            <h1 className="text-xs font-mono font-bold tracking-tight text-white flex items-center gap-1.5">
-              Gothwad Ai Studio
-              <span className="text-[9px] bg-[#375a7f]/20 border border-[#375a7f]/30 px-1.5 py-0.5 rounded text-[#375a7f] font-mono tracking-wide uppercase" style={{ color: accentColor, borderColor: `${accentColor}30`, backgroundColor: `${accentColor}12` }}>Multi-Modal</span>
-            </h1>
-          </div>
-        </div>
-
-        {/* Studios switcher buttons */}
-        <div className="flex items-center gap-1 bg-[#09090b] border border-zinc-900 rounded-xl p-1 font-mono text-[11px] font-semibold">
-          {[
-            { id: "chat", label: "AI Chat", icon: MessageSquare },
-            { id: "software", label: "Software Builder", icon: FileCode2 }
-          ].map((studio) => {
-            const Icon = studio.icon;
-            const isActive = activeStudio === studio.id;
-            return (
-              <button
-                key={studio.id}
-                onClick={() => handleSetActiveStudio(studio.id as any)}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all cursor-pointer select-none border border-transparent ${
-                  isActive
-                    ? "bg-[#375a7f]/15 text-[#375a7f] border-[#375a7f]/20 font-bold"
-                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50"
-                }`}
-                style={isActive ? { color: accentColor, borderColor: `${accentColor}25`, backgroundColor: `${accentColor}12` } : {}}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{studio.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Session profile */}
-        <div className="flex items-center gap-3">
-          {user && (
-            <div className="flex items-center gap-2 bg-[#09090b] border border-zinc-900 rounded-xl p-1 pr-3">
-              <img src={user.avatar_url} alt="Profile" className="w-6 h-6 rounded-lg select-none" />
-              <span className="text-[10px] font-mono text-zinc-400">{user.login}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Under-header Content */}
       <div className="flex-1 flex overflow-hidden w-full relative">
         
@@ -566,6 +513,9 @@ export default function DesktopLayout({
                 onUpdateSessions={onUpdateChatSessions}
                 customApiKey={customApiKey}
                 onSetCustomApiKey={onSetCustomApiKey}
+                appModels={appModels}
+                onUpdateAppModels={onUpdateAppModels}
+                onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
               />
             </React.Suspense>
           ) : (
@@ -753,6 +703,8 @@ export default function DesktopLayout({
                       updateEditor(code);
                     }}
                     accentColor={accentColor}
+                    appModels={appModels}
+                    customApiKey={customApiKey}
                   />
                 </React.Suspense>
 

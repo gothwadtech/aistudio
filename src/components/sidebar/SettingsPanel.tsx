@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Plus, Trash2, RotateCcw, Key, Eye, EyeOff, Cpu, Layers } from "lucide-react";
 
 interface SettingsPanelProps {
   themeMode: "system" | "dark" | "light";
@@ -15,6 +16,10 @@ interface SettingsPanelProps {
   onLogout: () => void;
   user: any;
   showCompactTitle?: boolean;
+  customApiKey: string;
+  onSetCustomApiKey: (key: string) => void;
+  appModels: any[];
+  onUpdateAppModels: (models: any[]) => void;
 }
 
 export default function SettingsPanel({
@@ -31,7 +36,11 @@ export default function SettingsPanel({
   token,
   onLogout,
   user,
-  showCompactTitle = false
+  showCompactTitle = false,
+  customApiKey,
+  onSetCustomApiKey,
+  appModels = [],
+  onUpdateAppModels
 }: SettingsPanelProps) {
   const [scaleInputText, setScaleInputText] = useState(Math.round(uiScale * 100).toString());
 
@@ -44,6 +53,79 @@ export default function SettingsPanel({
     const parsed = parseInt(val, 10);
     if (!isNaN(parsed) && parsed >= 10 && parsed <= 400) {
       onUiScaleChange(parsed / 100);
+    }
+  };
+
+  // Custom AI model management states
+  const [newModelValue, setNewModelValue] = useState("");
+  const [newModelLabel, setNewModelLabel] = useState("");
+  const [newModelDesc, setNewModelDesc] = useState("");
+  const [newModelChats, setNewModelChats] = useState(true);
+  const [newModelSoftware, setNewModelSoftware] = useState(true);
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  const handleResetModels = () => {
+    if (window.confirm("Are you sure you want to reset all models to defaults? This will erase custom added models.")) {
+      const DEFAULT_MODELS = [
+        { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", desc: "Fast, multi-modal, great for general tasks.", categories: ["chats", "software"] },
+        { value: "meta-llama/llama-3.3-70b-instruct:free", label: "Llama 3.3 70B (Free)", desc: "State-of-the-art open model with high intelligence.", categories: ["chats", "software"] },
+        { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nemotron 550B (Free)", desc: "Massive scale model for complex structural answers.", categories: ["chats", "software"] },
+        { value: "deepseek/deepseek-r1:free", label: "DeepSeek R1 Reasoning (Free)", desc: "Advanced reasoning and step-by-step thinking.", categories: ["chats", "software"] },
+        { value: "qwen/qwen-2.5-coder-32b-instruct:free", label: "Qwen 2.5 Coder (Free)", desc: "Optimized for programming and logic syntax.", categories: ["chats", "software"] },
+        { value: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet", desc: "Top-tier developer model for precise refactoring.", categories: ["chats", "software"] },
+        { value: "deepseek/deepseek-chat", label: "DeepSeek V3 (Cheap Paid)", desc: "Standard intelligence general purpose model.", categories: ["software"] },
+        { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (Standard)", desc: "Highly intelligent model, optimized for reasoning.", categories: ["software"] }
+      ];
+      onUpdateAppModels(DEFAULT_MODELS);
+    }
+  };
+
+  const handleAddModel = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newModelValue.trim() || !newModelLabel.trim()) {
+      alert("Model Value (Identifier) and Label (Display Name) are required.");
+      return;
+    }
+    
+    // Check if model already exists
+    if (appModels.some(m => m.value.toLowerCase() === newModelValue.trim().toLowerCase())) {
+      alert("A model with this identifier already exists.");
+      return;
+    }
+
+    const categories: ("chats" | "software")[] = [];
+    if (newModelChats) categories.push("chats");
+    if (newModelSoftware) categories.push("software");
+
+    if (categories.length === 0) {
+      alert("Please assign the model to at least one category (Chats or Software).");
+      return;
+    }
+
+    const nextModels = [
+      ...appModels,
+      {
+        value: newModelValue.trim(),
+        label: newModelLabel.trim(),
+        desc: newModelDesc.trim() || "User custom added model.",
+        categories
+      }
+    ];
+
+    onUpdateAppModels(nextModels);
+    
+    // Clear inputs
+    setNewModelValue("");
+    setNewModelLabel("");
+    setNewModelDesc("");
+    setNewModelChats(true);
+    setNewModelSoftware(true);
+  };
+
+  const handleDeleteModel = (modelValue: string) => {
+    if (window.confirm(`Are you sure you want to delete ${modelValue}?`)) {
+      const nextModels = appModels.filter(m => m.value !== modelValue);
+      onUpdateAppModels(nextModels);
     }
   };
 
@@ -262,6 +344,172 @@ export default function SettingsPanel({
               }`}
             />
           </button>
+        </div>
+      </div>
+
+      {/* Global OpenRouter API Key configuration - Moved here! */}
+      <div className="space-y-2.5 bg-zinc-950/40 p-3 rounded-lg border border-zinc-850">
+        <div className="flex items-center gap-1.5">
+          <Key className="w-3.5 h-3.5" style={{ color: accentColor }} />
+          <span className="text-[#375a7f] font-bold uppercase block tracking-wide text-[9px]" style={{ color: accentColor }}>OpenRouter API Credentials</span>
+        </div>
+        <p className="text-zinc-500 text-[9px] leading-relaxed">
+          Configure a custom OpenRouter authentication key for unlimited, high-rate limit chat & software building sessions.
+        </p>
+        
+        <div className="relative pt-1">
+          <input
+            type={showApiKey ? "text" : "password"}
+            value={customApiKey}
+            onChange={(e) => onSetCustomApiKey(e.target.value)}
+            placeholder="sk-or-v1-..."
+            className="w-full bg-zinc-900 border border-zinc-800 text-[10.5px] font-mono text-zinc-300 rounded px-2.5 py-1.5 pr-8 outline-none focus:border-zinc-700"
+          />
+          <button
+            type="button"
+            onClick={() => setShowApiKey(!showApiKey)}
+            className="absolute right-2 top-2.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+        <p className="text-[8.5px] text-zinc-600 leading-normal">
+          If empty, Gothwad AI Studio will fall back to its internal workspace proxy engine keys.
+        </p>
+      </div>
+
+      {/* Dynamic Model Engine Configuration Panel */}
+      <div className="space-y-3 bg-zinc-950/40 p-3 rounded-lg border border-zinc-850">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Cpu className="w-3.5 h-3.5" style={{ color: accentColor }} />
+            <span className="text-[#375a7f] font-bold uppercase block tracking-wide text-[9px]" style={{ color: accentColor }}>AI Models Directory</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetModels}
+            className="px-2 py-0.5 border border-zinc-850 bg-zinc-900 hover:bg-zinc-800 rounded text-zinc-400 hover:text-zinc-200 text-[8.5px] font-bold uppercase flex items-center gap-1 transition-all cursor-pointer"
+          >
+            <RotateCcw className="w-2.5 h-2.5" />
+            Reset Defaults
+          </button>
+        </div>
+
+        <p className="text-zinc-500 text-[9px] leading-relaxed">
+          Manage AI endpoints globally. Added models will appear automatically inside corresponding studio dropdown listings in real-time.
+        </p>
+
+        {/* Form to add model */}
+        <form onSubmit={handleAddModel} className="space-y-2 border-t border-zinc-900 pt-2.5">
+          <span className="text-[8.5px] font-bold uppercase text-zinc-400 tracking-wider">Add Custom LLM Engine</span>
+          
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <span className="text-[8px] uppercase text-zinc-600">Model Value (Identifier)</span>
+              <input
+                type="text"
+                placeholder="anthropic/claude-3-opus"
+                value={newModelValue}
+                onChange={(e) => setNewModelValue(e.target.value)}
+                className="w-full bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 rounded px-2 py-1 outline-none font-mono focus:border-zinc-700"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[8px] uppercase text-zinc-600">Display Label</span>
+              <input
+                type="text"
+                placeholder="Claude 3 Opus"
+                value={newModelLabel}
+                onChange={(e) => setNewModelLabel(e.target.value)}
+                className="w-full bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 rounded px-2 py-1 outline-none font-mono focus:border-zinc-700"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-[8px] uppercase text-zinc-600">Description Summary</span>
+            <input
+              type="text"
+              placeholder="Ultra intelligent reasoning model for structural planning."
+              value={newModelDesc}
+              onChange={(e) => setNewModelDesc(e.target.value)}
+              className="w-full bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 rounded px-2 py-1 outline-none font-mono focus:border-zinc-700"
+            />
+          </div>
+
+          <div className="flex items-center gap-4 py-1">
+            <span className="text-[8px] uppercase text-zinc-600">Target Categories:</span>
+            <label className="flex items-center gap-1.5 text-zinc-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={newModelChats}
+                onChange={(e) => setNewModelChats(e.target.checked)}
+                className="w-3 h-3 rounded border-zinc-800 bg-zinc-950 text-[#375a7f] focus:ring-0 cursor-pointer"
+                style={{ accentColor }}
+              />
+              <span className="text-[9.5px]">AI Chat (Chats)</span>
+            </label>
+            <label className="flex items-center gap-1.5 text-zinc-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={newModelSoftware}
+                onChange={(e) => setNewModelSoftware(e.target.checked)}
+                className="w-3 h-3 rounded border-zinc-800 bg-zinc-950 text-[#375a7f] focus:ring-0 cursor-pointer"
+                style={{ accentColor }}
+              />
+              <span className="text-[9.5px]">Software Companion</span>
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-1.5 text-[9.5px] font-bold text-white rounded font-mono hover:opacity-90 active:scale-99 transition-all cursor-pointer flex items-center justify-center gap-1"
+            style={{ backgroundColor: accentColor }}
+          >
+            <Plus className="w-3 h-3" />
+            Register LLM Model Endpoint
+          </button>
+        </form>
+
+        {/* List of models */}
+        <div className="space-y-1.5 border-t border-zinc-900 pt-2.5 max-h-56 overflow-y-auto no-scrollbar">
+          <span className="text-[8.5px] font-bold uppercase text-zinc-400 tracking-wider block mb-1">Active Registered Models Directory</span>
+          {appModels.map((m) => (
+            <div 
+              key={m.value}
+              className="flex items-start justify-between p-2 rounded bg-zinc-900/60 border border-zinc-850 gap-2.5"
+            >
+              <div className="space-y-0.5 flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-bold text-zinc-200">{m.label}</span>
+                  <span className="text-[8.5px] text-zinc-500 font-sans truncate">({m.value})</span>
+                </div>
+                <p className="text-zinc-500 text-[8.5px] leading-relaxed line-clamp-1">{m.desc}</p>
+                <div className="flex gap-1 pt-1">
+                  {m.categories.map((cat: string) => (
+                    <span 
+                      key={cat}
+                      className="text-[7.5px] font-bold uppercase font-mono px-1 py-0.2 rounded border bg-zinc-950 text-zinc-400"
+                      style={{ 
+                        color: cat === "chats" ? accentColor : "#a855f7",
+                        borderColor: cat === "chats" ? `${accentColor}25` : "#a855f725"
+                      }}
+                    >
+                      {cat === "chats" ? "Chats" : "Software"}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDeleteModel(m.value)}
+                className="p-1 rounded text-zinc-650 hover:text-red-400 hover:bg-zinc-800/30 cursor-pointer self-center transition-colors"
+                title={`Delete ${m.label}`}
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 

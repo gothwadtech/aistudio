@@ -194,26 +194,44 @@ export default function PrimarySidebar({
       
       {/* 1. SIDEBAR BRANDED HEADER WITH GOTHWAD AI STUDIO */}
       <div className="h-13 px-4 flex items-center justify-between border-b border-zinc-850 select-none bg-zinc-930/60 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div 
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-md shrink-0" 
-            style={{ background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}aa 100%)` }}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-white animate-pulse" />
-          </div>
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          {sidebarPage === "home" ? (
+            <div 
+              className="w-7 h-7 rounded-lg bg-[#0494f4] flex items-center justify-center text-white shadow-md shrink-0 overflow-hidden" 
+            >
+              <img src="/icon-512-maskable.png" alt="Gothwad Icon" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                setSidebarPage("home");
+                if (sidebarPage === "software") {
+                  handleSetActiveStudio?.("chat");
+                }
+              }}
+              className="p-1.5 bg-zinc-950 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-250 border border-zinc-800 rounded-lg transition-all cursor-pointer flex items-center justify-center shrink-0 active:scale-95"
+              title="Back to Menu"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+          )}
           <div className="flex flex-col min-w-0">
             <span className="text-[11.5px] font-mono font-bold text-zinc-100 tracking-tight leading-none uppercase truncate">
-              Gothwad Ai Studio
+              {sidebarPage === "home" && "Gothwad Ai Studio"}
+              {sidebarPage === "software" && "Software Builder"}
+              {sidebarPage === "chat_playground" && "AI Chat Studio"}
             </span>
-            <span className="text-[8.5px] font-mono text-zinc-550 uppercase tracking-wider truncate font-semibold mt-1">
-              AI Work Console
+            <span className="text-[8.5px] font-mono text-zinc-555 uppercase tracking-wider truncate font-semibold mt-1">
+              {sidebarPage === "home" && "AI Work Console"}
+              {sidebarPage === "software" && "Workspace IDE"}
+              {sidebarPage === "chat_playground" && "Chat Sandbox"}
             </span>
           </div>
         </div>
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
-            className="p-1.5 bg-zinc-950 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-zinc-800 rounded-lg transition-all cursor-pointer"
+            className="p-1.5 bg-zinc-950 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-zinc-800 rounded-lg transition-all cursor-pointer ml-2 shrink-0 active:scale-95 flex items-center justify-center"
             title="Collapse Sidebar"
           >
             <X className="w-3.5 h-3.5" />
@@ -223,62 +241,84 @@ export default function PrimarySidebar({
 
       {/* Page 1: Home/Main Menu of workspaces */}
       {sidebarPage === "home" && (
-        <div className="flex-1 overflow-y-auto no-scrollbar bg-zinc-950/15 divide-y divide-zinc-850/45">
-          {[
-            { id: "chat" as const, label: "AI Chat Playground", icon: MessageSquare, desc: "Multi-model sandbox & active prompts", action: () => {
-              handleSetActiveStudio?.("chat");
-            } },
-            { id: "software" as const, label: "Software Builder AI", icon: FileCode2, desc: "Workspace IDE & Git control", action: () => {
-              handleSetActiveStudio?.("software");
-              setMobileActiveTab?.("ai");
-              setSidebarPage("software");
-            } },
-            { id: "github" as const, label: "Connect GitHub", icon: GitBranch, desc: "OAuth & personal developer tokens", action: () => {
-              handleSetActiveStudio?.("software");
-              if (onSelectSection) onSelectSection("github");
-              setSidebarPage("software");
-            } },
-            { id: "login" as const, label: "Login Account", icon: LogIn, desc: "Supabase account connection", action: () => {
-              handleSetActiveStudio?.("software");
-              if (onSelectSection) onSelectSection("login");
-              setSidebarPage("software");
-            } },
-            { id: "settings" as const, label: "Studio Settings", icon: Settings, desc: "Configure layout & themes", action: () => {
-              handleSetActiveStudio?.("software");
-              if (onSelectSection) onSelectSection("settings");
-              setSidebarPage("software");
-            } }
-          ].map((std) => {
-            const Icon = std.icon;
-            const isCurrent = std.id === "chat" 
-              ? activeStudio === "chat"
-              : activeStudio === "software" && (
-                  (std.id === "software" && activeSection === "explorer") ||
-                  (std.id === "github" && activeSection === "github") ||
-                  (std.id === "settings" && activeSection === "settings") ||
-                  (std.id === "login" && activeSection === "login")
-                );
+        <div className="flex-1 flex flex-col justify-between overflow-hidden bg-zinc-950/15">
+          {/* Main Top Actions */}
+          <div className="flex-1 overflow-y-auto no-scrollbar divide-y divide-zinc-850/45">
+            {[
+              { id: "chat" as const, label: "AI Chat Playground", icon: MessageSquare, desc: "Multi-model sandbox & active prompts", action: () => {
+                handleSetActiveStudio?.("chat");
+                if (isMobile) onToggleSidebar?.();
+              } },
+              { id: "software" as const, label: "Software Builder AI", icon: FileCode2, desc: "Workspace IDE & Git control", action: () => {
+                handleSetActiveStudio?.("software");
+                setMobileActiveTab?.("ai");
+                setSidebarPage("software");
+                if (isMobile) onToggleSidebar?.();
+              } }
+            ].map((std) => {
+              const Icon = std.icon;
+              const isCurrent = std.id === "chat" 
+                ? activeStudio === "chat"
+                : activeStudio === "software";
 
-            return (
-              <button
-                key={std.id}
-                onClick={std.action}
-                className={`w-full flex items-center justify-between px-3.5 py-3.5 hover:bg-zinc-850/45 transition-all text-left border-b border-zinc-850/45 select-none cursor-pointer group ${
-                  isCurrent ? "bg-zinc-850/20" : ""
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div 
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-md shrink-0 transition-all" 
-                    style={{ 
-                      background: isCurrent
-                        ? `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}aa 100%)` 
-                        : "linear-gradient(135deg, #27272a 0%, #18181b 100%)" 
-                    }}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
+              return (
+                <button
+                  key={std.id}
+                  onClick={std.action}
+                  className={`w-full flex items-center justify-between px-3.5 py-3.5 hover:bg-zinc-850/45 transition-all text-left border-b border-zinc-850/45 select-none cursor-pointer group ${
+                    isCurrent ? "bg-zinc-850/20" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div 
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-md shrink-0 transition-all" 
+                      style={{ 
+                        background: isCurrent
+                          ? `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}aa 100%)` 
+                          : "linear-gradient(135deg, #27272a 0%, #18181b 100%)" 
+                      }}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[11px] font-mono font-bold text-zinc-100 uppercase tracking-tight leading-none truncate group-hover:text-white transition-colors">
+                        {std.label}
+                      </span>
+                      <span className="text-[8.5px] font-mono text-zinc-500 uppercase tracking-wider truncate font-semibold mt-1">
+                        {std.desc}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col min-w-0">
+                  <div className="text-zinc-555 shrink-0 ml-2 group-hover:text-zinc-300 transition-colors">
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Connected Bottom settings/login actions */}
+          <div className="border-t border-zinc-850 bg-zinc-930/40 divide-y divide-zinc-850/45 shrink-0">
+            {[
+              { id: "login" as const, label: "Login Account", icon: LogIn, desc: "Supabase connection status", action: () => {
+                handleSetActiveStudio?.("software");
+                if (onSelectSection) onSelectSection("login");
+                setSidebarPage("software");
+              } },
+              { id: "settings" as const, label: "Studio Settings", icon: Settings, desc: "Theme options & configurations", action: () => {
+                handleSetActiveStudio?.("software");
+                if (onSelectSection) onSelectSection("settings");
+                setSidebarPage("software");
+              } }
+            ].map((std) => {
+              const Icon = std.icon;
+              return (
+                <button
+                  key={std.id}
+                  onClick={std.action}
+                  className="w-full flex items-center justify-between px-3.5 py-3 hover:bg-zinc-850/45 transition-all text-left select-none cursor-pointer group"
+                >
+                  <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-[11px] font-mono font-bold text-zinc-100 uppercase tracking-tight leading-none truncate group-hover:text-white transition-colors">
                       {std.label}
                     </span>
@@ -286,32 +326,19 @@ export default function PrimarySidebar({
                       {std.desc}
                     </span>
                   </div>
-                </div>
-                <div className="text-zinc-555 shrink-0 ml-2 group-hover:text-zinc-300 transition-colors">
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </div>
-              </button>
-            );
-          })}
+                  <div className="text-zinc-400 shrink-0 ml-2 group-hover:text-white transition-all p-1.5 bg-zinc-950/50 rounded-lg border border-zinc-850/80">
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
       {/* Page 2: Software Builder sub-sections */}
       {sidebarPage === "software" && (
         <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950/15">
-          {/* Back button header row */}
-          <div className="h-12 border-b border-zinc-850/45 flex items-center px-2 shrink-0 bg-zinc-950/20">
-            <button
-              onClick={() => {
-                setSidebarPage("home");
-                handleSetActiveStudio?.("chat");
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-zinc-400 hover:text-white hover:bg-zinc-850/40 rounded-xl transition-all cursor-pointer font-mono text-[9px] font-bold uppercase tracking-wider"
-            >
-              <ChevronLeft className="w-4 h-4 text-zinc-400" />
-              <span>Back to Menu</span>
-            </button>
-          </div>
 
           <div className="flex-1 overflow-y-auto no-scrollbar divide-y divide-zinc-850/45">
             {/* SECTION 1: WORKSPACE EXPLORER */}
@@ -571,18 +598,6 @@ export default function PrimarySidebar({
 
       {sidebarPage === "chat_playground" && (
         <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950/15">
-          {/* Back button header row */}
-          <div className="h-12 border-b border-zinc-850/45 flex items-center px-2 shrink-0 bg-zinc-950/20">
-            <button
-              onClick={() => {
-                setSidebarPage("home");
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-zinc-400 hover:text-white hover:bg-zinc-850/40 rounded-xl transition-all cursor-pointer font-mono text-[9px] font-bold uppercase tracking-wider"
-            >
-              <ChevronLeft className="w-4 h-4 text-zinc-400" />
-              <span>Back to Menu</span>
-            </button>
-          </div>
 
           {/* Dynamic Tab Switchers */}
           <div className="h-11 border-b border-zinc-850 flex items-center justify-around bg-zinc-950/20 shrink-0">

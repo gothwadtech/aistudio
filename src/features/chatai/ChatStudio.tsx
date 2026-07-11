@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { 
   Send, Trash2, Cpu, Sliders, Play, Terminal, HelpCircle, 
   MessageSquare, Sparkles, Copy, Check, Eye, EyeOff, Key,
-  Settings, Plus, History, Menu, ChevronLeft, ChevronRight, ChevronDown,
+  Settings, Plus, History, Menu, ChevronLeft, ChevronRight, ChevronDown, X,
   Mic, PlusCircle, LayoutGrid, RotateCcw, Cloud, UploadCloud,
   Camera, Youtube, Image, CheckCircle, SlidersHorizontal
 } from "lucide-react";
@@ -15,12 +15,15 @@ interface ChatStudioProps {
   accentColor: string;
   isMobile: boolean;
   onOpenMenu?: () => void;
+  onToggleSidebar?: () => void;
   sessions: any[];
   activeSessionId: string;
   onSetActiveSessionId: (id: string) => void;
   onUpdateSessions: (sessions: any[]) => void;
   customApiKey: string;
   onSetCustomApiKey: (key: string) => void;
+  appModels?: any[];
+  onUpdateAppModels?: (models: any[]) => void;
 }
 
 interface ChatSession {
@@ -34,7 +37,7 @@ interface ChatSession {
   maxTokens: number;
 }
 
-const MODELS = [
+const DEFAULT_CHATS_MODELS = [
   { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", desc: "Fast, multi-modal, great for general tasks." },
   { value: "meta-llama/llama-3.3-70b-instruct:free", label: "Llama 3.3 70B (Free)", desc: "State-of-the-art open model with high intelligence." },
   { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nemotron 550B (Free)", desc: "Massive scale model for complex structural answers." },
@@ -43,19 +46,70 @@ const MODELS = [
   { value: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet", desc: "Top-tier developer model for precise refactoring." }
 ];
 
+function ThinkingBubble({ modelKey, label, startTime }: { modelKey: string; label: string; startTime: number; key?: any }) {
+  const [elapsed, setElapsed] = useState("0.0");
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const sec = ((Date.now() - startTime) / 1000).toFixed(1);
+      setElapsed(sec);
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [startTime]);
+
+  return (
+    <div className="flex flex-col w-full space-y-3 pb-8 border-b-2 border-zinc-800/80 animate-[fadeIn_0.15s_ease-out]">
+      {/* Header Avatar and Label Row */}
+      <div className="flex items-center gap-1.5 px-1 select-none flex-row">
+        <div className="w-5.5 h-5.5 rounded-full flex items-center justify-center overflow-hidden shrink-0 shadow-sm bg-transparent">
+          <img 
+            src="/icon-512.png" 
+            alt="Thinking" 
+            className="w-full h-full object-cover animate-spin filter brightness-110" 
+            referrerPolicy="no-referrer"
+          />
+        </div>
+        <span className="text-[10px] font-mono font-extrabold uppercase tracking-wider text-zinc-200">
+          {label}
+        </span>
+        <span className="ml-2 text-[10px] font-mono font-extrabold uppercase tracking-wider text-zinc-200">
+          WORKING FOR {elapsed} SECONDS...
+        </span>
+      </div>
+
+      {/* Message Body Bubble */}
+      <div className="w-full pl-1">
+        <div className="h-1 bg-zinc-900 rounded-full overflow-hidden w-40">
+          <div className="h-full bg-zinc-700 animate-[loading_1.5s_infinite] rounded-full" style={{ width: "60%" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ChatStudio({ 
   accentColor, 
   isMobile, 
   onOpenMenu,
+  onToggleSidebar,
   sessions,
   activeSessionId,
   onSetActiveSessionId,
   onUpdateSessions,
   customApiKey,
-  onSetCustomApiKey
+  onSetCustomApiKey,
+  appModels = [],
+  onUpdateAppModels
 }: ChatStudioProps) {
+  const chatModels = appModels.length > 0 
+    ? appModels.filter(m => m.categories?.includes("chats"))
+    : DEFAULT_CHATS_MODELS;
+
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingModels, setLoadingModels] = useState<string[]>([]);
+  const [modelStartTimes, setModelStartTimes] = useState<Record<string, number>>({});
+  const isLoading = loadingModels.length > 0;
   const [showApiKey, setShowApiKey] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
@@ -70,6 +124,52 @@ export default function ChatStudio({
   const [leftTab, setLeftTab] = useState<"history" | "parameters">("history");
   const [showHeaderModelMenu, setShowHeaderModelMenu] = useState(false);
 
+  // Custom Model registration states
+  const [customModelId, setCustomModelId] = useState("");
+  const [customModelName, setCustomModelName] = useState("");
+  const [customModelDesc, setCustomModelDesc] = useState("");
+  const [customError, setCustomError] = useState<string | null>(null);
+
+  const handleAddCustomModel = () => {
+    if (!customModelId.trim()) {
+      setCustomError("Model ID is required.");
+      return;
+    }
+    if (!customModelName.trim()) {
+      setCustomError("Display label is required.");
+      return;
+    }
+
+    // Check if duplicate value
+    if (chatModels.some(m => m.value === customModelId.trim())) {
+      setCustomError("A model with this ID is already registered.");
+      return;
+    }
+
+    const newModelItem = {
+      value: customModelId.trim(),
+      label: customModelName.trim(),
+      desc: customModelDesc.trim() || "User registered custom AI engine.",
+      categories: ["chats", "software"] as ("chats" | "software")[]
+    };
+
+    if (onUpdateAppModels) {
+      const updatedModels = [...appModels, newModelItem];
+      onUpdateAppModels(updatedModels);
+      
+      // Auto select this new model
+      handleToggleModel(newModelItem.value);
+      
+      // Clear fields
+      setCustomModelId("");
+      setCustomModelName("");
+      setCustomModelDesc("");
+      setCustomError(null);
+    } else {
+      setCustomError("Model configuration update callback is unavailable.");
+    }
+  };
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // Find active session
@@ -81,6 +181,30 @@ export default function ChatStudio({
   const systemInstruction = activeSession?.systemInstruction || "";
   const temperature = activeSession?.temperature ?? 0.7;
   const maxTokens = activeSession?.maxTokens ?? 2048;
+
+  const selectedModelsArray = selectedModel ? selectedModel.split(",") : ["google/gemini-2.5-flash"];
+
+  const handleToggleModel = (modelValue: string) => {
+    let updatedArray: string[];
+    if (selectedModelsArray.includes(modelValue)) {
+      if (selectedModelsArray.length <= 1) {
+        return; // Keep at least one selected
+      }
+      updatedArray = selectedModelsArray.filter(m => m !== modelValue);
+    } else {
+      updatedArray = [...selectedModelsArray, modelValue];
+    }
+    updateActiveSession({ selectedModel: updatedArray.join(",") });
+  };
+
+  const selectedModelsLabel = (() => {
+    if (selectedModelsArray.length === 0) return "Select Models";
+    if (selectedModelsArray.length === 1) {
+      return chatModels.find(m => m.value === selectedModelsArray[0])?.label || selectedModelsArray[0];
+    }
+    const firstLabel = chatModels.find(m => m.value === selectedModelsArray[0])?.label || selectedModelsArray[0];
+    return `${firstLabel.split(" (")[0]} (+${selectedModelsArray.length - 1})`;
+  })();
 
   const updateActiveSession = (updates: Partial<ChatSession>) => {
     const updated = sessions.map(s => {
@@ -161,7 +285,7 @@ export default function ChatStudio({
       timestamp: new Date()
     };
 
-    const newMsgs = [...messages, userMsg];
+    let currentMsgs = [...messages, userMsg];
     
     // Auto rename title if generic
     let newTitle = activeSession.title;
@@ -169,78 +293,97 @@ export default function ChatStudio({
       newTitle = input.trim().substring(0, 24) + (input.trim().length > 24 ? "..." : "");
     }
 
-    const updated = sessions.map(s => {
+    let localSessions = [...sessions];
+    localSessions = localSessions.map(s => {
       if (s.id === activeSessionId) {
         return {
           ...s,
           title: newTitle,
-          messages: newMsgs,
+          messages: currentMsgs,
           timestamp: Date.now()
         };
       }
       return s;
     });
-    onUpdateSessions(updated);
+    onUpdateSessions(localSessions);
     setInput("");
-    setIsLoading(true);
 
-    try {
-      const response = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: newMsgs,
-          selectedAgent: "custom",
-          apiProvider: "openrouter",
-          selectedModel,
-          customApiKey: customApiKey || undefined,
-          systemInstructionOverride: systemInstruction
-        })
-      });
+    const modelsToQuery = [...selectedModelsArray];
+    setLoadingModels(modelsToQuery);
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `HTTP ${response.status}`);
-      }
-
-      const resData = await response.json();
-      const responseText = resData.text || "No response received.";
-
-      const assistantMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: responseText,
-        timestamp: new Date(),
-        keyStatus: resData.usedCustomKey ? "custom" : resData.usedServerKey ? "server" : "missing"
-      };
-
-      const finalMsgs = [...newMsgs, assistantMsg];
-      const updatedWithResponse = sessions.map(s => {
-        if (s.id === activeSessionId) {
-          return { ...s, messages: finalMsgs };
-        }
-        return s;
-      });
-      onUpdateSessions(updatedWithResponse);
-    } catch (err: any) {
-      console.error(err);
-      const assistantMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `⚠️ **Inference Request Failed**\n\nCould not query model **${selectedModel}**.\n\n**Reason:** ${err.message || "Unknown proxy exception"}\n\n*Verify your API key setup in the parameter panel or environment config.*`,
-        timestamp: new Date()
-      };
+    for (const modelVal of modelsToQuery) {
+      const modelLabel = chatModels.find(m => m.value === modelVal)?.label || modelVal;
+      const startTime = Date.now();
+      setModelStartTimes(prev => ({ ...prev, [modelVal]: startTime }));
       
-      const finalMsgs = [...newMsgs, assistantMsg];
-      const updatedWithResponse = sessions.map(s => {
-        if (s.id === activeSessionId) {
-          return { ...s, messages: finalMsgs };
+      try {
+        const response = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: currentMsgs,
+            selectedAgent: "custom",
+            apiProvider: "openrouter",
+            selectedModel: modelVal,
+            customApiKey: customApiKey || undefined,
+            systemInstructionOverride: systemInstruction,
+            temperature,
+            maxTokens
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${response.status}`);
         }
-        return s;
-      });
-      onUpdateSessions(updatedWithResponse);
-    } finally {
-      setIsLoading(false);
+
+        const resData = await response.json();
+        const responseText = resData.text || "No response received.";
+        const durationSec = parseFloat(((Date.now() - startTime) / 1000).toFixed(2));
+
+        const assistantMsg: Message = {
+          id: (Date.now() + Math.random()).toString(),
+          role: "assistant",
+          content: responseText,
+          timestamp: new Date(),
+          agent: modelVal,
+          durationSec,
+          keyStatus: resData.usedCustomKey ? "custom" : resData.usedServerKey ? "server" : "missing"
+        };
+
+        currentMsgs = [...currentMsgs, assistantMsg];
+        
+        localSessions = localSessions.map(s => {
+          if (s.id === activeSessionId) {
+            return { ...s, messages: currentMsgs };
+          }
+          return s;
+        });
+        onUpdateSessions(localSessions);
+      } catch (err: any) {
+        console.error(err);
+        const durationSec = parseFloat(((Date.now() - startTime) / 1000).toFixed(2));
+        const assistantMsg: Message = {
+          id: (Date.now() + Math.random()).toString(),
+          role: "assistant",
+          content: `⚠️ **Inference Request Failed**\n\nCould not query model **${modelLabel}**.\n\n**Reason:** ${err.message || "Unknown proxy exception"}\n\n*Verify your API key setup in the parameter panel or environment config.*`,
+          timestamp: new Date(),
+          agent: modelVal,
+          durationSec
+        };
+
+        currentMsgs = [...currentMsgs, assistantMsg];
+        
+        localSessions = localSessions.map(s => {
+          if (s.id === activeSessionId) {
+            return { ...s, messages: currentMsgs };
+          }
+          return s;
+        });
+        onUpdateSessions(localSessions);
+      } finally {
+        setLoadingModels(prev => prev.filter(m => m !== modelVal));
+      }
     }
   };
 
@@ -335,7 +478,7 @@ export default function ChatStudio({
                       <div className="flex flex-col min-w-0 leading-tight">
                         <span className="text-[11px] font-sans font-medium truncate">{s.title}</span>
                         <span className="text-[8.5px] text-zinc-555 font-mono uppercase mt-0.5 truncate">
-                          {MODELS.find(m => m.value === s.selectedModel)?.label.split(" (")[0] || s.selectedModel}
+                          {chatModels.find(m => m.value === s.selectedModel)?.label.split(" (")[0] || s.selectedModel}
                         </span>
                       </div>
                     </div>
@@ -365,12 +508,12 @@ export default function ChatStudio({
                 onChange={(e) => setSelectedModel(e.target.value)}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-300 focus:outline-none transition-all cursor-pointer font-sans text-xs"
               >
-                {MODELS.map((m) => (
+                {chatModels.map((m) => (
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
               <p className="text-[10px] text-zinc-500 font-sans mt-1 leading-normal">
-                {MODELS.find(m => m.value === selectedModel)?.desc}
+                {chatModels.find(m => m.value === selectedModel)?.desc}
               </p>
             </div>
 
@@ -498,7 +641,10 @@ export default function ChatStudio({
                     <div className="flex flex-col min-w-0 leading-tight">
                       <span className="text-[11px] font-sans font-medium truncate">{s.title}</span>
                       <span className="text-[8.5px] text-zinc-555 font-mono uppercase mt-0.5 truncate">
-                        {MODELS.find(m => m.value === s.selectedModel)?.label.split(" (")[0] || s.selectedModel}
+                        {s.selectedModel ? s.selectedModel.split(",").map((mKey: string) => {
+                          const found = chatModels.find(m => m.value === mKey);
+                          return found ? found.label.split(" (")[0] : mKey;
+                        }).join(" + ") : "No model"}
                       </span>
                     </div>
                   </div>
@@ -533,19 +679,35 @@ export default function ChatStudio({
       <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 space-y-4 font-mono text-xs">
         <div className="space-y-4">
           {/* Model Target selection */}
-          <div className="space-y-1.5">
-            <label className="text-zinc-500 font-bold uppercase tracking-wider text-[9px]">Model Target</label>
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-300 focus:outline-none transition-all cursor-pointer font-sans text-xs"
-            >
-              {MODELS.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-            <p className="text-[10px] text-zinc-500 font-sans mt-1 leading-normal">
-              {MODELS.find(m => m.value === selectedModel)?.desc}
+          <div className="space-y-2">
+            <label className="text-zinc-500 font-bold uppercase tracking-wider text-[9px]">Active LLM Engines (Multi-Select)</label>
+            <div className="border border-zinc-850 rounded-xl bg-zinc-950 p-2 space-y-1 max-h-48 overflow-y-auto no-scrollbar">
+              {chatModels.map((m) => {
+                const isChecked = selectedModelsArray.includes(m.value);
+                return (
+                  <label 
+                    key={m.value}
+                    className={`flex items-start gap-2.5 p-2 rounded-lg cursor-pointer transition-colors ${
+                      isChecked ? "bg-zinc-900/60 text-zinc-200" : "text-zinc-400 hover:bg-zinc-900/30 hover:text-zinc-300"
+                    }`}
+                  >
+                    <input 
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => handleToggleModel(m.value)}
+                      className="mt-0.5 w-3.5 h-3.5 rounded border-zinc-800 bg-zinc-950 text-[#375a7f] focus:ring-0 cursor-pointer"
+                      style={{ accentColor }}
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-[10px] leading-tight font-sans">{m.label}</span>
+                      <span className="text-[8.5px] text-zinc-500 leading-normal font-sans line-clamp-1 mt-0.5">{m.desc}</span>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+            <p className="text-[9px] text-zinc-500 font-sans leading-normal">
+              Toggle multiple models to compare their responses side-by-side in real-time.
             </p>
           </div>
 
@@ -595,33 +757,6 @@ export default function ChatStudio({
               className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-300 focus:outline-none transition-all"
             />
           </div>
-
-          {/* OpenRouter overrides */}
-          <div className="space-y-2 border-t border-zinc-850 pt-4">
-            <div className="flex items-center gap-1.5 text-zinc-500">
-              <Key className="w-3.5 h-3.5 text-zinc-500" />
-              <span className="font-bold uppercase tracking-wider text-[9px]">OpenRouter API Key</span>
-            </div>
-            <div className="relative">
-              <input
-                type={showApiKey ? "text" : "password"}
-                value={customApiKey}
-                onChange={(e) => handleApiKeyChange(e.target.value)}
-                placeholder="sk-or-v1-..."
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-1.5 pl-2.5 pr-8 text-zinc-300 focus:outline-none font-mono text-[10px]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-2 top-2 text-zinc-500 hover:text-zinc-300"
-              >
-                {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-            <p className="text-[9px] text-zinc-600 font-sans leading-normal">
-              Leave empty to fallback to Gothwad Ai Studio's host system key. Input custom key for unlimited personal usage limits.
-            </p>
-          </div>
         </div>
       </div>
     </div>
@@ -629,6 +764,169 @@ export default function ChatStudio({
 
   return (
     <div className="flex-1 flex overflow-hidden w-full h-full bg-zinc-950 text-zinc-300 font-sans relative">
+      
+      {/* 0. Sliding Left Model Selector Drawer */}
+      {showHeaderModelMenu && (
+        <>
+          {/* Backdrop Overlay */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[100] transition-opacity duration-150 animate-fade-in" 
+            onClick={() => setShowHeaderModelMenu(false)} 
+          />
+          
+          {/* Left sliding container - Perfectly cloned width, bg, border and z-index to match primary sidebar */}
+          <div 
+            className="fixed left-0 top-0 bottom-0 w-[280px] max-w-[85vw] bg-zinc-900 border-r border-zinc-850 z-[101] shadow-2xl flex flex-col h-full animate-slide-in-left select-none overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header - Matching primary sidebar height, padding, borders and bg */}
+            <div className="h-13 px-4 flex items-center justify-between border-b border-zinc-850 bg-zinc-930/60 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <Cpu className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-200">
+                  Select Model
+                </span>
+              </div>
+              <button 
+                onClick={() => setShowHeaderModelMenu(false)}
+                className="p-1 text-zinc-500 hover:text-zinc-350 hover:bg-zinc-800/40 rounded-lg cursor-pointer transition-all active:scale-95"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Model List & Custom Add Form - Cloned padding, font scale and layouts */}
+            <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 space-y-4 font-mono text-xs">
+              
+              {/* Models List */}
+              <div className="space-y-2">
+                <div className="text-[9px] font-mono font-extrabold uppercase tracking-widest text-zinc-500">Available AI Models</div>
+                <div className="space-y-1 max-h-[280px] overflow-y-auto pr-1 no-scrollbar border border-zinc-850/50 rounded-xl p-2 bg-zinc-950/20">
+                  {chatModels.map((m) => {
+                    const isChecked = selectedModelsArray.includes(m.value);
+                    return (
+                      <div
+                        key={m.value}
+                        onClick={() => handleToggleModel(m.value)}
+                        className={`group flex flex-col p-2 rounded-lg cursor-pointer transition-all border ${
+                          isChecked 
+                            ? "bg-zinc-850/50 border-zinc-750/50 text-zinc-100" 
+                            : "bg-transparent border-transparent hover:bg-zinc-900/40 text-zinc-400 hover:text-zinc-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-sans font-medium truncate">{m.label}</span>
+                          <input 
+                            type="checkbox"
+                            checked={isChecked}
+                            readOnly
+                            className="w-3.5 h-3.5 rounded border-zinc-800 bg-zinc-950 text-[#375a7f] focus:ring-0 cursor-pointer"
+                            style={{ accentColor }}
+                          />
+                        </div>
+                        <p className="text-[9px] text-zinc-500 font-sans mt-0.5 leading-normal line-clamp-2">
+                          {m.desc}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Add Custom Model Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 border-t border-zinc-850 pt-4 mb-1">
+                  <PlusCircle className="w-3.5 h-3.5 text-zinc-500" style={{ color: accentColor }} />
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-200">
+                    Register Custom Model
+                  </span>
+                </div>
+
+                {/* Example card block - scaled down nicely for w-280px */}
+                <div className="bg-zinc-950/40 border border-zinc-850/60 rounded-xl p-2.5 space-y-1 text-[9.5px]">
+                  <div className="text-zinc-500 font-extrabold uppercase tracking-widest text-[8px] font-mono">Example Model Format</div>
+                  <div className="grid grid-cols-[70px_1fr] gap-x-1">
+                    <span className="text-zinc-500 uppercase">Model ID:</span>
+                    <span className="text-zinc-300 font-mono bg-zinc-950/60 px-1 rounded truncate">google/gemini-1.5-pro</span>
+                  </div>
+                  <div className="grid grid-cols-[70px_1fr] gap-x-1">
+                    <span className="text-zinc-500 uppercase">Name:</span>
+                    <span className="text-zinc-300 font-sans font-medium">Gemini 1.5 Pro</span>
+                  </div>
+                </div>
+
+                {/* Custom Model Form */}
+                <div className="space-y-3 font-mono text-[10px]">
+                  <div className="space-y-1">
+                    <label className="text-zinc-500 font-bold uppercase tracking-wider text-[8.5px]">Model ID / Value</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. meta-llama/llama-3-8b"
+                      value={customModelId}
+                      onChange={(e) => {
+                        setCustomModelId(e.target.value);
+                        setCustomError(null);
+                      }}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-1.5 px-2.5 text-zinc-300 focus:outline-none font-mono text-[10px]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-zinc-500 font-bold uppercase tracking-wider text-[8.5px]">Display Label</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. Llama 3 8B"
+                      value={customModelName}
+                      onChange={(e) => {
+                        setCustomModelName(e.target.value);
+                        setCustomError(null);
+                      }}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-1.5 px-2.5 text-zinc-300 focus:outline-none font-mono text-[10px]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-zinc-500 font-bold uppercase tracking-wider text-[8.5px]">Short Description</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. Fast open source reasoning model"
+                      value={customModelDesc}
+                      onChange={(e) => setCustomModelDesc(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-1.5 px-2.5 text-zinc-300 focus:outline-none font-mono text-[10px]"
+                    />
+                  </div>
+
+                  {customError && (
+                    <div className="text-rose-400 font-bold text-[9px] leading-tight">
+                      ✕ {customError}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleAddCustomModel}
+                    className="w-full py-2 bg-zinc-850 hover:bg-zinc-800 text-zinc-100 border border-zinc-750 hover:border-zinc-700 rounded-lg flex items-center justify-center gap-2 font-bold uppercase tracking-wide transition-all cursor-pointer text-[10px]"
+                  >
+                    <Plus className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                    Register Custom Model
+                  </button>
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* Apply & Close Button Footer */}
+            <div className="p-3.5 border-t border-zinc-850 bg-zinc-930/30 shrink-0">
+              <button
+                onClick={() => setShowHeaderModelMenu(false)}
+                className="w-full py-2 bg-zinc-850 hover:bg-zinc-800 text-zinc-200 font-mono font-bold rounded-lg tracking-wider uppercase text-[10px] cursor-pointer transition-all flex items-center justify-center border border-zinc-750 hover:border-zinc-700 active:scale-98"
+              >
+                Apply & Close
+              </button>
+            </div>
+          </div>
+        </>
+      )}
       
       {/* 1. Left Side Chat History Panel (Desktop view only, collapsible) */}
       {!isMobile && showHistoryPanel && (
@@ -642,15 +940,23 @@ export default function ChatStudio({
         {/* Chat Studio Unified Header - aligned perfectly with primary sidebar header style */}
         <div className="h-13 border-b border-zinc-850 bg-zinc-900/85 backdrop-blur-md px-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            {/* Hamburger trigger for mobile menu drawer */}
-            {isMobile && onOpenMenu && (
+            {/* Hamburger trigger for mobile menu drawer OR desktop sidebar toggle */}
+            {isMobile && onOpenMenu ? (
               <button 
                 onClick={onOpenMenu}
                 className="p-1.5 bg-zinc-950 hover:bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-800 rounded-lg cursor-pointer shrink-0 transition-all active:scale-95 flex items-center justify-center"
               >
                 <Menu className="w-5 h-5" />
               </button>
-            )}
+            ) : !isMobile && onToggleSidebar ? (
+              <button 
+                onClick={onToggleSidebar}
+                className="p-1.5 bg-zinc-950 hover:bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-800 rounded-lg cursor-pointer shrink-0 transition-all active:scale-95 flex items-center justify-center mr-1"
+                title="Toggle Sidebar"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            ) : null}
             
             <div className="flex items-center gap-2.5">
               <div>
@@ -660,41 +966,9 @@ export default function ChatStudio({
                     onClick={() => setShowHeaderModelMenu(!showHeaderModelMenu)}
                     className="flex items-center gap-1 text-[8.5px] font-mono text-zinc-500 hover:text-zinc-300 uppercase tracking-wider select-none transition-all duration-150 cursor-pointer"
                   >
-                    <span>{MODELS.find(m => m.value === selectedModel)?.label || selectedModel}</span>
+                    <span>{selectedModelsLabel}</span>
                     <ChevronDown className="w-2.5 h-2.5 text-zinc-500 shrink-0 ml-0.5" />
                   </button>
-
-                  {showHeaderModelMenu && (
-                    <>
-                      {/* overlay layer */}
-                      <div 
-                        className="fixed inset-0 z-40" 
-                        onClick={() => setShowHeaderModelMenu(false)} 
-                      />
-                      <div className="absolute left-0 mt-1.5 bg-zinc-950 border border-zinc-800 rounded-xl p-1.5 w-60 shadow-2xl z-50 flex flex-col font-sans">
-                        <div className="px-2 py-1 border-b border-zinc-900 mb-1.5 text-[8.5px] font-mono font-bold uppercase tracking-wider text-zinc-500">
-                          Select LLM Engine
-                        </div>
-                        {MODELS.map((m) => (
-                          <button
-                            key={m.value}
-                            onClick={() => {
-                              setSelectedModel(m.value);
-                              setShowHeaderModelMenu(false);
-                            }}
-                            className={`w-full flex flex-col items-start gap-0.5 px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer ${
-                              selectedModel === m.value 
-                                ? "bg-zinc-900 text-white font-bold" 
-                                : "text-zinc-400 hover:text-white hover:bg-zinc-900/60"
-                            }`}
-                          >
-                            <span className="font-semibold text-[10px]">{m.label}</span>
-                            <span className="text-[8.5px] text-zinc-500 line-clamp-1 leading-normal">{m.desc}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
@@ -710,33 +984,6 @@ export default function ChatStudio({
               <Plus className="w-3.5 h-3.5" />
             </button>
 
-            {/* Clear thread message history */}
-            <button
-              onClick={handleClear}
-              className="p-1.5 bg-zinc-950 hover:bg-rose-950/15 text-zinc-400 hover:text-rose-500 border border-zinc-800 hover:border-rose-900/30 rounded-lg transition-all cursor-pointer"
-              title="Reset Thread Messages"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-
-            {/* Toggle History Panel Button */}
-            <button
-              onClick={() => {
-                if (isMobile) {
-                  setLeftTab("history");
-                  setShowConfigDrawer(true);
-                } else {
-                  setShowHistoryPanel(!showHistoryPanel);
-                }
-              }}
-              className={`p-1.5 bg-zinc-950 hover:bg-zinc-850 border border-zinc-800 rounded-lg transition-all cursor-pointer ${
-                !isMobile && showHistoryPanel ? "text-white border-zinc-700 bg-zinc-900" : "text-zinc-400 hover:text-zinc-200"
-              }`}
-              title="Toggle History Sidebar"
-            >
-              <History className="w-3.5 h-3.5" />
-            </button>
-
             {/* Toggle Parameters Panel Button */}
             <button
               onClick={() => {
@@ -747,12 +994,12 @@ export default function ChatStudio({
                   setShowParametersPanel(!showParametersPanel);
                 }
               }}
-              className={`p-1.5 bg-zinc-950 hover:bg-zinc-850 border border-zinc-800 rounded-lg transition-all cursor-pointer ${
+              className={`p-1.5 bg-zinc-950 hover:bg-zinc-850 border border-zinc-800 rounded-lg transition-all cursor-pointer active:scale-95 flex items-center justify-center shrink-0 ${
                 !isMobile && showParametersPanel ? "text-white border-zinc-700 bg-zinc-900" : "text-zinc-400 hover:text-zinc-200"
               }`}
               title="Toggle Parameters Sidebar"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <SlidersHorizontal className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -770,24 +1017,18 @@ export default function ChatStudio({
             />
           ))}
 
-          {isLoading && (
-            <div className="flex gap-3 max-w-lg items-start">
-              <div className="w-7 h-7 rounded-lg bg-zinc-900 text-zinc-300 border border-zinc-800 flex items-center justify-center shrink-0 animate-spin">
-                <Sparkles className="w-3.5 h-3.5 text-zinc-500" />
-              </div>
-              <div className="space-y-1.5 flex-1">
-                <div className="bg-zinc-900 border border-zinc-850 rounded-2xl rounded-tl-none p-4 text-xs font-mono text-zinc-400 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                    <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Compiling inference sequence...</span>
-                  </div>
-                  <div className="h-1 bg-zinc-850 rounded-full overflow-hidden w-40">
-                    <div className="h-full bg-zinc-750 animate-[loading_1.5s_infinite] rounded-full" style={{ width: "60%" }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {loadingModels.map((modelKey) => {
+            const label = chatModels.find(m => m.value === modelKey)?.label || modelKey;
+            const sTime = modelStartTimes[modelKey] || Date.now();
+            return (
+              <ThinkingBubble 
+                key={modelKey}
+                modelKey={modelKey}
+                label={label}
+                startTime={sTime}
+              />
+            );
+          })}
 
           <div ref={messagesEndRef} />
         </div>
