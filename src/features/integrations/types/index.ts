@@ -16,8 +16,3 @@ export interface NetlifySite {
   url: string;
   updated_at: string;
 }
-
-export interface SupabaseTable {
-  name: string;
-  description: string;
-}

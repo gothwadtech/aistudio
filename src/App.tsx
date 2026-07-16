@@ -9,6 +9,49 @@ import { getAppModels, saveAppModels, AIModel } from "./utils/modelRegistry";
 const MobileLayout = React.lazy(() => import("./components/MobileLayout"));
 const DesktopLayout = React.lazy(() => import("./components/DesktopLayout"));
 
+const pathToOptionMap: Record<string, { option: string; studio: "chat" | "software" }> = {
+  "/chat": { option: "gothwad_ai", studio: "chat" },
+  "/playground": { option: "chat", studio: "chat" },
+  "/voice": { option: "voice_assistant", studio: "chat" },
+  "/image": { option: "image_gen", studio: "chat" },
+  "/video": { option: "video_gen", studio: "chat" },
+  "/audio": { option: "audio_gen", studio: "chat" },
+  "/presentation": { option: "presentation_ai", studio: "chat" },
+  "/website": { option: "website_builder_ai", studio: "chat" },
+  "/webapp": { option: "web_app_builder_ai", studio: "chat" },
+  "/software": { option: "software", studio: "software" },
+};
+
+const optionToPathMap: Record<string, string> = {
+  gothwad_ai: "/chat",
+  chat: "/playground",
+  voice_assistant: "/voice",
+  image_gen: "/image",
+  video_gen: "/video",
+  audio_gen: "/audio",
+  presentation_ai: "/presentation",
+  website_builder_ai: "/website",
+  web_app_builder_ai: "/webapp",
+  software: "/software",
+};
+
+const getInitialRoute = () => {
+  if (typeof window === "undefined") {
+    return { option: "gothwad_ai", studio: "chat" as const };
+  }
+  const path = window.location.pathname;
+  const match = pathToOptionMap[path];
+  if (match) {
+    return match;
+  }
+  const savedOption = safeStorage.getItem("gothwad_active_main_option") || "gothwad_ai";
+  const savedStudio = safeStorage.getItem("gothwad_studio_active_studio") as "chat" | "software";
+  return {
+    option: savedOption,
+    studio: (savedStudio === "software" || savedOption === "software") ? ("software" as const) : ("chat" as const)
+  };
+};
+
 export default function App() {
   const {
     token,
@@ -55,10 +98,89 @@ export default function App() {
   };
 
   const [mobileActiveTab, setMobileActiveTab] = useState<"explorer" | "editor" | "git" | "preview" | "ai" | "settings">("explorer");
-  const [activeStudio, setActiveStudio] = useState<"chat" | "software">(() => {
-    const saved = safeStorage.getItem("gothwad_studio_active_studio");
-    return (saved === "software" ? "software" : "chat");
+  const [activeMainOption, setActiveMainOptionRaw] = useState<string>(() => {
+    return getInitialRoute().option;
   });
+  const [activeStudio, setActiveStudio] = useState<"chat" | "software">(() => {
+    return getInitialRoute().studio;
+  });
+
+  const navigateToOption = (valueOrFn: string | ((prev: string) => string), forceStudio?: "chat" | "software") => {
+    setActiveMainOptionRaw((prevOption) => {
+      const nextOption = typeof valueOrFn === "function" ? valueOrFn(prevOption) : valueOrFn;
+      
+      const path = optionToPathMap[nextOption];
+      if (path) {
+        let nextStudio: "chat" | "software" = "chat";
+        if (nextOption === "software") {
+          nextStudio = "software";
+        } else if (forceStudio) {
+          nextStudio = forceStudio;
+        } else {
+          const match = pathToOptionMap[path];
+          if (match) {
+            nextStudio = match.studio;
+          }
+        }
+        
+        setActiveStudio(nextStudio);
+        safeStorage.setItem("gothwad_studio_active_studio", nextStudio);
+        
+        if (window.location.pathname !== path) {
+          window.history.pushState(null, "", path);
+        }
+      }
+      
+      safeStorage.setItem("gothwad_active_main_option", nextOption);
+      return nextOption;
+    });
+  };
+
+  const setActiveMainOption = (val: string | ((prev: string) => string)) => {
+    navigateToOption(val);
+  };
+
+  // Listen to popstate for browser back/forward history navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      const match = pathToOptionMap[path];
+      if (match) {
+        setActiveMainOptionRaw(match.option);
+        setActiveStudio(match.studio);
+        safeStorage.setItem("gothwad_active_main_option", match.option);
+        safeStorage.setItem("gothwad_studio_active_studio", match.studio);
+      } else {
+        if (path === "/" || path === "") {
+          window.history.replaceState(null, "", "/chat");
+          setActiveMainOptionRaw("gothwad_ai");
+          setActiveStudio("chat");
+          safeStorage.setItem("gothwad_active_main_option", "gothwad_ai");
+          safeStorage.setItem("gothwad_studio_active_studio", "chat");
+        }
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    // Sync path URL on mount
+    const initialPath = window.location.pathname;
+    const initialMatch = pathToOptionMap[initialPath];
+    if (initialMatch) {
+      setActiveMainOptionRaw(initialMatch.option);
+      setActiveStudio(initialMatch.studio);
+      safeStorage.setItem("gothwad_active_main_option", initialMatch.option);
+      safeStorage.setItem("gothwad_studio_active_studio", initialMatch.studio);
+    } else {
+      const savedOption = safeStorage.getItem("gothwad_active_main_option") || "gothwad_ai";
+      const defaultPath = optionToPathMap[savedOption] || "/chat";
+      window.history.replaceState(null, "", defaultPath);
+    }
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   const [chatSessions, setChatSessions] = useState<any[]>(() => {
     const saved = safeStorage.getItem("gothwad_studio_chat_sessions");
@@ -103,12 +225,28 @@ export default function App() {
     return savedActiveId || (chatSessions[0]?.id || Date.now().toString());
   });
 
-  const [customApiKey, setCustomApiKey] = useState(() => safeStorage.getItem("gothwad_ai_key") || "");
+  const [customApiKey, setCustomApiKey] = useState(() => {
+    const saved = safeStorage.getItem("gothwad_ai_key");
+    if (!saved) {
+      const defaultKey = (import.meta as any).env?.VITE_OPENROUTER_API_KEY || "";
+      if (defaultKey) {
+        safeStorage.setItem("gothwad_ai_key", defaultKey);
+      }
+      return defaultKey;
+    }
+    return saved;
+  });
+  const [groqApiKey, setGroqApiKey] = useState(() => safeStorage.getItem("gothwad_groq_key") || "");
   const [appModels, setAppModels] = useState<AIModel[]>(() => getAppModels());
 
   const handleSetCustomApiKey = (key: string) => {
     setCustomApiKey(key);
     safeStorage.setItem("gothwad_ai_key", key);
+  };
+
+  const handleSetGroqApiKey = (key: string) => {
+    setGroqApiKey(key);
+    safeStorage.setItem("gothwad_groq_key", key);
   };
 
   const handleUpdateAppModels = (updated: AIModel[]) => {
@@ -129,6 +267,13 @@ export default function App() {
   const handleSetActiveStudio = (studio: "chat" | "software") => {
     setActiveStudio(studio);
     safeStorage.setItem("gothwad_studio_active_studio", studio);
+    if (studio === "software") {
+      navigateToOption("software");
+    } else {
+      const savedOption = safeStorage.getItem("gothwad_active_main_option") || "gothwad_ai";
+      const optionToUse = savedOption === "software" ? "gothwad_ai" : savedOption;
+      navigateToOption(optionToUse);
+    }
   };
 
   const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState<boolean>(false);
@@ -255,21 +400,13 @@ export default function App() {
   }, [themeMode, accentColor, fontFamily]);
 
   useEffect(() => {
-    fetch("/api/auth/config")
-      .then(res => {
-        if (!res.ok) throw new Error("Offline");
-        return res.json();
-      })
-      .then(data => setAuthConfig(data))
-      .catch(() => {
-        // Fallback to client-side environment variables or location origin
-        const fallbackClient = (import.meta as any).env?.VITE_GITHUB_CLIENT_ID || "";
-        const fallbackUrl = (import.meta as any).env?.VITE_APP_URL || window.location.origin;
-        setAuthConfig({
-          clientId: fallbackClient,
-          appUrl: fallbackUrl
-        });
-      });
+    // Pure client-side static config fallback
+    const fallbackClient = (import.meta as any).env?.VITE_GITHUB_CLIENT_ID || "";
+    const fallbackUrl = (import.meta as any).env?.VITE_APP_URL || window.location.origin;
+    setAuthConfig({
+      clientId: fallbackClient,
+      appUrl: fallbackUrl
+    });
   }, []);
 
   useEffect(() => {
@@ -410,13 +547,19 @@ export default function App() {
             onUpdateChatSessions={handleUpdateChatSessions}
             customApiKey={customApiKey}
             onSetCustomApiKey={handleSetCustomApiKey}
+            groqApiKey={groqApiKey}
+            onSetGroqApiKey={handleSetGroqApiKey}
             appModels={appModels}
             onUpdateAppModels={handleUpdateAppModels}
+            activeMainOption={activeMainOption}
+            setActiveMainOption={setActiveMainOption}
           />
         ) : (
           <DesktopLayout
             activeStudio={activeStudio}
             handleSetActiveStudio={handleSetActiveStudio}
+            activeMainOption={activeMainOption}
+            setActiveMainOption={setActiveMainOption}
             accentColor={accentColor}
             selectedRepo={selectedRepo}
             activeFile={activeFile}
@@ -470,6 +613,8 @@ export default function App() {
             onUpdateChatSessions={handleUpdateChatSessions}
             customApiKey={customApiKey}
             onSetCustomApiKey={handleSetCustomApiKey}
+            groqApiKey={groqApiKey}
+            onSetGroqApiKey={handleSetGroqApiKey}
             appModels={appModels}
             onUpdateAppModels={handleUpdateAppModels}
           />

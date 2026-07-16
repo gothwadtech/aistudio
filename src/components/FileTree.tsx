@@ -1,6 +1,6 @@
 import React, { forwardRef, useRef, useImperativeHandle } from "react";
 import { GrixFileNode } from "../types/github";
-import WorkspaceTree, { WorkspaceTreeRef } from "../features/workspace/WorkspaceTree";
+import WorkspaceTree, { WorkspaceTreeRef } from "../features/common/workspace/WorkspaceTree";
 import { useGitHub } from "../hooks/useGitHub";
 
 interface FileTreeProps {

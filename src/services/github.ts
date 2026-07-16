@@ -43,13 +43,7 @@ class GitHubService {
       headers["Content-Type"] = "application/json";
     }
 
-    const isCloudflare = 
-      window.location.hostname === "aistudio.gothwadtech.com" || 
-      window.location.hostname.endsWith(".pages.dev") ||
-      window.location.hostname.endsWith(".cloudflare.com") ||
-      (!window.location.hostname.includes("run.app") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
-
-    const baseUrl = isCloudflare ? `https://api.github.com/${path}` : `/api/github-proxy/${path}`;
+    const baseUrl = `https://api.github.com/${path}`;
 
     const response = await fetch(baseUrl, {
       ...options,

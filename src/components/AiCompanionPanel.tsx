@@ -9,11 +9,11 @@ import { GrixFileNode } from "../types/github";
 import { safeStorage } from "../utils/safeStorage";
 
 // Modular Imports
-import { Message } from "../features/ai/types";
+import { Message } from "../features/common/ai/types";
 import { parseMarkdown } from "./ui/MarkdownText";
-import { getFlatFilePaths } from "../features/ai/utils/promptBuilder";
-import ChatHeader from "../features/ai/components/ChatHeader";
-import ChatMessageList from "../features/ai/components/ChatMessageList";
+import { getFlatFilePaths } from "../features/common/ai/utils/promptBuilder";
+import ChatHeader from "../features/common/ai/components/ChatHeader";
+import ChatMessageList from "../features/common/ai/components/ChatMessageList";
 import ChatInputBar from "./ChatInputBar";
 import { callAiChat } from "../utils/aiClient";
 
@@ -26,11 +26,17 @@ interface AiCompanionPanelProps {
   accentColor: string;
   appModels?: any[];
   customApiKey?: string;
+  groqApiKey?: string;
   isMobile?: boolean;
   onOpenMenu?: () => void;
 }
 
 const POPULAR_MODELS = [
+  { value: "groq/llama-3.3-70b-versatile", label: "Groq Llama 3.3 70B (Fast)", provider: "groq" },
+  { value: "groq/deepseek-r1-distill-llama-70b", label: "Groq DeepSeek R1 70B (Reasoning)", provider: "groq" },
+  { value: "groq/llama-3.1-8b-instant", label: "Groq Llama 3.1 8B (Instant)", provider: "groq" },
+  { value: "groq/gemma2-9b-it", label: "Groq Gemma 2 9B (Fast)", provider: "groq" },
+  { value: "groq/mixtral-8x7b-32768", label: "Groq Mixtral 8x7B (Fast)", provider: "groq" },
   { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nvidia Nemotron 550B (Free)", provider: "openrouter" },
   { value: "meta-llama/llama-3.3-70b-instruct:free", label: "Llama 3.3 70B (Free)", provider: "openrouter" },
   { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "openrouter" },
@@ -83,6 +89,7 @@ export default function AiCompanionPanel({
   accentColor,
   appModels = [],
   customApiKey,
+  groqApiKey,
   isMobile = false,
   onOpenMenu
 }: AiCompanionPanelProps) {
@@ -101,7 +108,11 @@ export default function AiCompanionPanel({
   const [customApiKeyLocal, setCustomApiKeyLocal] = useState("");
   const activeCustomApiKey = customApiKey !== undefined && customApiKey !== "" ? customApiKey : customApiKeyLocal;
 
+  const [groqApiKeyLocal, setGroqApiKeyLocal] = useState("");
+  const activeGroqApiKey = groqApiKey !== undefined && groqApiKey !== "" ? groqApiKey : groqApiKeyLocal;
+
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const [groqKeyVisible, setGroqKeyVisible] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [applyTooltip, setApplyTooltip] = useState<string | null>(null);
   const [hasServerKey, setHasServerKey] = useState(false);
@@ -150,31 +161,13 @@ export default function AiCompanionPanel({
       setActiveSessionId(defaultId);
     }
 
-    const savedKey = safeStorage.getItem("gothwad_ai_key");
-    if (savedKey) setCustomApiKeyLocal(savedKey);
+    const savedKey = safeStorage.getItem("gothwad_ai_key") || (import.meta as any).env?.VITE_OPENROUTER_API_KEY || "";
+    setCustomApiKeyLocal(savedKey);
 
-    const isCloudflare = 
-      window.location.hostname === "aistudio.gothwadtech.com" || 
-      window.location.hostname.endsWith(".pages.dev") ||
-      window.location.hostname.endsWith(".cloudflare.com") ||
-      (!window.location.hostname.includes("run.app") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
+    const savedGroqKey = safeStorage.getItem("gothwad_groq_key");
+    if (savedGroqKey) setGroqApiKeyLocal(savedGroqKey);
 
-    if (isCloudflare) {
-      setHasServerKey(false);
-    } else {
-      // Fetch config
-      fetch("/api/ai/config")
-        .then(res => res.json())
-        .then(data => {
-          if (data && typeof data.hasServerKey === "boolean") {
-            setHasServerKey(data.hasServerKey);
-          }
-        })
-        .catch(err => {
-          console.warn("Failed to check server AI config:", err);
-          setHasServerKey(false);
-        });
-    }
+    setHasServerKey(false);
   }, []);
 
   // Sync to local storage
@@ -318,6 +311,7 @@ export default function AiCompanionPanel({
         selectedAgent: activeSession.selectedAgent,
         selectedModel: activeSession.selectedModel,
         customApiKey: activeCustomApiKey || undefined,
+        groqApiKey: activeGroqApiKey || undefined,
         systemInstructionOverride: activeSession.systemInstruction !== DEFAULT_SYSTEM_INSTRUCTION ? activeSession.systemInstruction : undefined,
         temperature: activeSession.temperature,
         maxTokens: activeSession.maxTokens
@@ -655,6 +649,41 @@ export default function AiCompanionPanel({
                       <span className="text-blue-400">🔵 Gothwad Server Key is active. Ready to launch.</span>
                     ) : (
                       <span className="text-red-400">⚠️ No keys detected. Insert your OpenRouter Key or set server variable.</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Groq API Provider Status & Info */}
+                <div className="space-y-2 border-t border-zinc-850 pt-4">
+                  <div className="flex items-center gap-1.5 text-zinc-500">
+                    <Key className="w-3.5 h-3.5" />
+                    <span className="font-bold font-mono uppercase tracking-wider text-[9px]">Groq API Key</span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={groqKeyVisible ? "text" : "password"}
+                      value={groqApiKeyLocal}
+                      onChange={(e) => {
+                        setGroqApiKeyLocal(e.target.value);
+                        safeStorage.setItem("gothwad_groq_key", e.target.value);
+                      }}
+                      placeholder="gsk_..."
+                      className="w-full bg-zinc-950 border border-zinc-900 rounded-lg py-1.5 pl-2.5 pr-8 text-zinc-300 focus:outline-none font-mono text-[10px]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setGroqKeyVisible(!groqKeyVisible)}
+                      className="absolute right-2 top-2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                    >
+                      {groqKeyVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  
+                  <div className="bg-zinc-900/40 border border-zinc-900 p-2.5 rounded-lg text-[9.5px] text-zinc-500 font-mono leading-relaxed mt-1">
+                    {groqApiKeyLocal.trim() !== "" ? (
+                      <span className="text-emerald-400">🟢 Custom Groq key is active. Fast inference enabled.</span>
+                    ) : (
+                      <span className="text-zinc-500">⚪ No Groq custom key configured. Falls back to host cache.</span>
                     )}
                   </div>
                 </div>

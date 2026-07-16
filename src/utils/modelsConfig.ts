@@ -6,6 +6,12 @@ export interface AIModel {
 }
 
 export const DEFAULT_MODELS: AIModel[] = [
+  { value: "openrouter/auto", label: "Gothwad AI Auto Router", desc: "India's First LLM AI - automatically routes queries to optimal AI models.", categories: ["chats", "software"] },
+  { value: "groq/llama-3.3-70b-versatile", label: "Groq Llama 3.3 70B (Fast)", desc: "Super-fast Llama 3.3 model hosted on Groq hardware.", categories: ["chats", "software"] },
+  { value: "groq/deepseek-r1-distill-llama-70b", label: "Groq DeepSeek R1 70B (Reasoning)", desc: "DeepSeek R1 reasoning model distilled onto Llama 70B with ultra-fast inference.", categories: ["chats", "software"] },
+  { value: "groq/llama-3.1-8b-instant", label: "Groq Llama 3.1 8B (Instant)", desc: "Lightweight and instant response Llama model.", categories: ["chats", "software"] },
+  { value: "groq/gemma2-9b-it", label: "Groq Gemma 2 9B (Fast)", desc: "Google's Gemma 2 9B model running fast on Groq.", categories: ["chats", "software"] },
+  { value: "groq/mixtral-8x7b-32768", label: "Groq Mixtral 8x7B (Fast)", desc: "MoE Mixtral model optimized for speed and logic.", categories: ["chats", "software"] },
   { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nemotron-3 Ultra 550B", desc: "Massive scale model for complex structural answers.", categories: ["chats", "software"] },
   { value: "poolside/laguna-m.1:free", label: "Poolside Laguna M.1", desc: "Optimized software engineering and reasoning model.", categories: ["chats", "software"] },
   { value: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron-3 Super 120B", desc: "Supercharged LLM optimized for high intelligence.", categories: ["chats", "software"] },

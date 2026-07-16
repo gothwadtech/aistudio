@@ -20,16 +20,28 @@ import {
   Eye,
   EyeOff,
   Cpu,
-  X
+  X,
+  Image,
+  Video,
+  Music,
+  Mic,
+  Globe,
+  AppWindow,
+  Presentation
 } from "lucide-react";
 
 import IntegrationsPanel from "./IntegrationsPanel";
 import SettingsPanel from "./sidebar/SettingsPanel";
-import GothwadAuthPanel from "./sidebar/GothwadAuthPanel";
 import SourceControlPanel from "./sidebar/SourceControlPanel";
 import { safeStorage } from "../utils/safeStorage";
 
 const MODELS = [
+  { value: "openrouter/auto", label: "Gothwad AI Auto Router", desc: "India's First LLM AI - automatically routes queries to optimal AI models." },
+  { value: "groq/llama-3.3-70b-versatile", label: "Groq Llama 3.3 70B (Fast)", desc: "Super-fast Llama 3.3 model hosted on Groq hardware." },
+  { value: "groq/deepseek-r1-distill-llama-70b", label: "Groq DeepSeek R1 70B (Reasoning)", desc: "DeepSeek R1 reasoning model distilled onto Llama 70B with ultra-fast inference." },
+  { value: "groq/llama-3.1-8b-instant", label: "Groq Llama 3.1 8B (Instant)", desc: "Lightweight and instant response Llama model." },
+  { value: "groq/gemma2-9b-it", label: "Groq Gemma 2 9B (Fast)", desc: "Google's Gemma 2 9B model running fast on Groq." },
+  { value: "groq/mixtral-8x7b-32768", label: "Groq Mixtral 8x7B (Fast)", desc: "MoE Mixtral model optimized for speed and logic." },
   { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", desc: "Fast, multi-modal, great for general tasks." },
   { value: "meta-llama/llama-3.3-70b-instruct:free", label: "Llama 3.3 70B (Free)", desc: "State-of-the-art open model with high intelligence." },
   { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nemotron 550B (Free)", desc: "Massive scale model for complex structural answers." },
@@ -40,7 +52,7 @@ const MODELS = [
 
 interface PrimarySidebarProps {
   token: string | null;
-  activeSection: "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud" | "login";
+  activeSection: "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud";
   user: any;
   repos: any[];
   selectedRepo: any;
@@ -86,7 +98,88 @@ interface PrimarySidebarProps {
   customApiKey?: string;
   onSetCustomApiKey?: (key: string) => void;
   onToggleSidebar?: () => void;
+  activeMainOption?: string;
+  setActiveMainOption?: (val: string | ((prev: string) => string)) => void;
 }
+
+const STUDIO_COLORS: Record<string, {
+  accent: string;
+  bgActive: string;
+  bgHover: string;
+  gradient: string;
+  textGlow: string;
+}> = {
+  gothwad_ai: {
+    accent: "#a855f7", // Purple
+    bgActive: "rgba(168, 85, 247, 0.08)",
+    bgHover: "rgba(168, 85, 247, 0.03)",
+    gradient: "linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #7c3aed 100%)",
+    textGlow: "0px 0px 10px rgba(168, 85, 247, 0.4)"
+  },
+  image_gen: {
+    accent: "#f43f5e", // Rose
+    bgActive: "rgba(244, 63, 94, 0.08)",
+    bgHover: "rgba(244, 63, 94, 0.03)",
+    gradient: "linear-gradient(135deg, #fb7185 0%, #f43f5e 50%, #be123c 100%)",
+    textGlow: "0px 0px 10px rgba(244, 63, 94, 0.4)"
+  },
+  video_gen: {
+    accent: "#06b6d4", // Cyan
+    bgActive: "rgba(6, 182, 212, 0.08)",
+    bgHover: "rgba(6, 182, 212, 0.03)",
+    gradient: "linear-gradient(135deg, #22d3ee 0%, #06b6d4 50%, #0891b2 100%)",
+    textGlow: "0px 0px 10px rgba(6, 182, 212, 0.4)"
+  },
+  audio_gen: {
+    accent: "#10b981", // Emerald
+    bgActive: "rgba(16, 185, 129, 0.08)",
+    bgHover: "rgba(16, 185, 129, 0.03)",
+    gradient: "linear-gradient(135deg, #34d399 0%, #10b981 50%, #047857 100%)",
+    textGlow: "0px 0px 10px rgba(16, 185, 129, 0.4)"
+  },
+  presentation_ai: {
+    accent: "#14b8a6", // Teal
+    bgActive: "rgba(20, 184, 166, 0.08)",
+    bgHover: "rgba(20, 184, 166, 0.03)",
+    gradient: "linear-gradient(135deg, #2dd4bf 0%, #14b8a6 50%, #0f766e 100%)",
+    textGlow: "0px 0px 10px rgba(20, 184, 166, 0.4)"
+  },
+  website_builder_ai: {
+    accent: "#eab308", // Gold/Yellow
+    bgActive: "rgba(234, 179, 8, 0.08)",
+    bgHover: "rgba(234, 179, 8, 0.03)",
+    gradient: "linear-gradient(135deg, #fde047 0%, #eab308 50%, #ca8a04 100%)",
+    textGlow: "0px 0px 10px rgba(234, 179, 8, 0.4)"
+  },
+  web_app_builder_ai: {
+    accent: "#d946ef", // Fuchsia/Pink
+    bgActive: "rgba(217, 70, 239, 0.08)",
+    bgHover: "rgba(217, 70, 239, 0.03)",
+    gradient: "linear-gradient(135deg, #f0abfc 0%, #d946ef 50%, #c084fc 100%)",
+    textGlow: "0px 0px 10px rgba(217, 70, 239, 0.4)"
+  },
+  voice_assistant: {
+    accent: "#f97316", // Orange
+    bgActive: "rgba(249, 115, 22, 0.08)",
+    bgHover: "rgba(249, 115, 22, 0.03)",
+    gradient: "linear-gradient(135deg, #ff9d43 0%, #f97316 50%, #c2410c 100%)",
+    textGlow: "0px 0px 10px rgba(249, 115, 22, 0.4)"
+  },
+  chat: {
+    accent: "#3b82f6", // Blue
+    bgActive: "rgba(59, 130, 246, 0.08)",
+    bgHover: "rgba(59, 130, 246, 0.03)",
+    gradient: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%)",
+    textGlow: "0px 0px 10px rgba(59, 130, 246, 0.4)"
+  },
+  software: {
+    accent: "#6366f1", // Indigo
+    bgActive: "rgba(99, 102, 241, 0.08)",
+    bgHover: "rgba(99, 102, 241, 0.03)",
+    gradient: "linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #4338ca 100%)",
+    textGlow: "0px 0px 10px rgba(99, 102, 241, 0.4)"
+  }
+};
 
 export default function PrimarySidebar({
   token,
@@ -135,11 +228,39 @@ export default function PrimarySidebar({
   onUpdateChatSessions,
   customApiKey = "",
   onSetCustomApiKey,
-  onToggleSidebar
+  onToggleSidebar,
+  activeMainOption: activeMainOptionProp,
+  setActiveMainOption: setActiveMainOptionProp
 }: PrimarySidebarProps) {
   // Synchronized active studio selection / lower panel option
-  const [selectedChatOption, setSelectedChatOption] = useState<"chat" | "software" | "github" | "settings" | "login">("chat");
-  const [sidebarPage, setSidebarPage] = useState<"home" | "software" | "github" | "settings" | "login" | "chat_playground">("home");
+  const [selectedChatOption, setSelectedChatOption] = useState<"chat" | "software" | "github" | "settings">("chat");
+  const [activeMainOptionLocal, setActiveMainOptionLocal] = useState<string>(() => {
+    return safeStorage.getItem("gothwad_active_main_option") || "gothwad_ai";
+  });
+
+  const activeMainOption = activeMainOptionProp !== undefined ? activeMainOptionProp : activeMainOptionLocal;
+
+  const [sidebarPage, setSidebarPage] = useState<"home" | "software" | "github" | "settings" | "chat_playground">(() => {
+    if (activeStudio === "chat") {
+      return activeMainOption === "chat" ? "chat_playground" : "home";
+    } else if (activeStudio === "software") {
+      return "software";
+    }
+    return "home";
+  });
+  const setActiveMainOption = (val: string | ((prev: string) => string)) => {
+    if (setActiveMainOptionProp) {
+      setActiveMainOptionProp(val);
+    } else {
+      setActiveMainOptionLocal(prev => {
+        const nextVal = typeof val === "function" ? val(prev) : val;
+        safeStorage.setItem("gothwad_active_main_option", nextVal);
+        return nextVal;
+      });
+    }
+  };
+
+
 
   // Local collapsible section expansion states for Software Builder (file tree style)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -166,14 +287,14 @@ export default function PrimarySidebar({
     }
   }, [activeStudio]);
 
-  // Sync internal sidebar page with activeStudio to stay in perfect sync
+  // Sync internal sidebar page with activeStudio and activeMainOption to stay in perfect sync
   useEffect(() => {
     if (activeStudio === "chat") {
-      setSidebarPage("chat_playground");
+      setSidebarPage("home");
     } else if (activeStudio === "software") {
       setSidebarPage("software");
     }
-  }, [activeStudio]);
+  }, [activeStudio, activeMainOption]);
 
   const [chatTab, setChatTab] = useState<"history" | "parameters">("history");
   const [showApiKey, setShowApiKey] = useState(false);
@@ -190,10 +311,10 @@ export default function PrimarySidebar({
   }, [activeSection]);
 
   return (
-    <div className="w-full min-w-0 md:w-[280px] md:min-w-[280px] h-full bg-zinc-900 border-r border-zinc-850 flex flex-col justify-start overflow-hidden select-none z-40">
+    <div className="w-full min-w-0 md:w-[280px] md:min-w-[280px] h-full bg-zinc-950 border-r border-zinc-900 flex flex-col justify-start overflow-hidden select-none z-40">
       
       {/* 1. SIDEBAR BRANDED HEADER WITH GOTHWAD AI STUDIO */}
-      <div className="h-13 px-4 flex items-center justify-between border-b border-zinc-850 select-none bg-zinc-930/60 shrink-0">
+      <div className="h-13 px-4 flex items-center justify-between border-b border-zinc-900 select-none bg-zinc-950 shrink-0">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           {sidebarPage === "home" ? (
             <div 
@@ -245,43 +366,204 @@ export default function PrimarySidebar({
           {/* Main Top Actions */}
           <div className="flex-1 overflow-y-auto no-scrollbar divide-y divide-zinc-850/45">
             {[
-              { id: "chat" as const, label: "AI Chat Playground", icon: MessageSquare, desc: "Multi-model sandbox & active prompts", action: () => {
-                handleSetActiveStudio?.("chat");
-                if (isMobile) onToggleSidebar?.();
-              } },
-              { id: "software" as const, label: "Software Builder AI", icon: FileCode2, desc: "Workspace IDE & Git control", action: () => {
-                handleSetActiveStudio?.("software");
-                setMobileActiveTab?.("ai");
-                setSidebarPage("software");
-                if (isMobile) onToggleSidebar?.();
-              } }
+              { 
+                id: "gothwad_ai", 
+                label: "Gothwad AI", 
+                icon: Sparkles, 
+                desc: "India's First LLM AI", 
+                action: () => {
+                  setActiveMainOption("gothwad_ai");
+                  safeStorage.setItem("gothwad_active_main_option", "gothwad_ai");
+                  handleSetActiveStudio?.("chat");
+                  if (chatSessions && activeChatSessionId && onUpdateChatSessions) {
+                    const updated = chatSessions.map(s => {
+                      if (s.id === activeChatSessionId) {
+                        return { ...s, selectedModel: "openrouter/auto" };
+                      }
+                      return s;
+                    });
+                    onUpdateChatSessions(updated);
+                  }
+                  if (isMobile) onToggleSidebar?.();
+                } 
+              },
+              { 
+                id: "chat", 
+                label: "AI Chat Playground", 
+                icon: MessageSquare, 
+                desc: "Multi-model AI sandbox", 
+                action: () => {
+                  setActiveMainOption("chat");
+                  safeStorage.setItem("gothwad_active_main_option", "chat");
+                  handleSetActiveStudio?.("chat");
+                  if (chatSessions && activeChatSessionId && onUpdateChatSessions) {
+                    const activeSess = chatSessions.find(s => s.id === activeChatSessionId);
+                    if (activeSess?.selectedModel === "openrouter/auto") {
+                      const updated = chatSessions.map(s => {
+                        if (s.id === activeChatSessionId) {
+                          return { ...s, selectedModel: "google/gemini-2.5-flash" };
+                        }
+                        return s;
+                      });
+                      onUpdateChatSessions(updated);
+                    }
+                  }
+                  if (isMobile) onToggleSidebar?.();
+                } 
+              },
+              { 
+                id: "voice_assistant", 
+                label: "Voice Assistant AI", 
+                icon: Mic, 
+                desc: "Real-time Voice & Speech", 
+                action: () => {
+                  setActiveMainOption("voice_assistant");
+                  safeStorage.setItem("gothwad_active_main_option", "voice_assistant");
+                  handleSetActiveStudio?.("chat");
+                  if (isMobile) onToggleSidebar?.();
+                } 
+              },
+              { 
+                id: "image_gen", 
+                label: "Image Generator AI", 
+                icon: Image, 
+                desc: "AI Art & Creative Diffusion", 
+                action: () => {
+                  setActiveMainOption("image_gen");
+                  safeStorage.setItem("gothwad_active_main_option", "image_gen");
+                  handleSetActiveStudio?.("chat");
+                  if (isMobile) onToggleSidebar?.();
+                } 
+              },
+              { 
+                id: "video_gen", 
+                label: "Video Generator AI", 
+                icon: Video, 
+                desc: "Cinematic AI text-to-video", 
+                action: () => {
+                  setActiveMainOption("video_gen");
+                  safeStorage.setItem("gothwad_active_main_option", "video_gen");
+                  handleSetActiveStudio?.("chat");
+                  if (isMobile) onToggleSidebar?.();
+                } 
+              },
+              { 
+                id: "audio_gen", 
+                label: "Audio Generator AI", 
+                icon: Music, 
+                desc: "AI Music & Sound synthesis", 
+                action: () => {
+                  setActiveMainOption("audio_gen");
+                  safeStorage.setItem("gothwad_active_main_option", "audio_gen");
+                  handleSetActiveStudio?.("chat");
+                  if (isMobile) onToggleSidebar?.();
+                } 
+              },
+              { 
+                id: "presentation_ai", 
+                label: "Presentation AI", 
+                icon: Presentation, 
+                desc: "Generate professional decks & slides", 
+                action: () => {
+                  setActiveMainOption("presentation_ai");
+                  safeStorage.setItem("gothwad_active_main_option", "presentation_ai");
+                  handleSetActiveStudio?.("chat");
+                  if (isMobile) onToggleSidebar?.();
+                } 
+              },
+              { 
+                id: "website_builder_ai", 
+                label: "Website Builder AI", 
+                icon: Globe, 
+                desc: "Design & build custom websites", 
+                action: () => {
+                  setActiveMainOption("website_builder_ai");
+                  safeStorage.setItem("gothwad_active_main_option", "website_builder_ai");
+                  handleSetActiveStudio?.("chat");
+                  if (isMobile) onToggleSidebar?.();
+                } 
+              },
+              { 
+                id: "web_app_builder_ai", 
+                label: "Web App Builder AI", 
+                icon: AppWindow, 
+                desc: "Create interactive web applications", 
+                action: () => {
+                  setActiveMainOption("web_app_builder_ai");
+                  safeStorage.setItem("gothwad_active_main_option", "web_app_builder_ai");
+                  handleSetActiveStudio?.("chat");
+                  if (isMobile) onToggleSidebar?.();
+                } 
+              },
+              { 
+                id: "software", 
+                label: "Software Builder AI", 
+                icon: FileCode2, 
+                desc: "Workspace IDE & Git control", 
+                action: () => {
+                  setActiveMainOption("software");
+                  safeStorage.setItem("gothwad_active_main_option", "software");
+                  handleSetActiveStudio?.("software");
+                  setMobileActiveTab?.("ai");
+                  setSidebarPage("software");
+                  if (isMobile) onToggleSidebar?.();
+                } 
+              }
             ].map((std) => {
               const Icon = std.icon;
-              const isCurrent = std.id === "chat" 
-                ? activeStudio === "chat"
-                : activeStudio === "software";
+              const isCurrent = activeMainOption === std.id;
+              const colorInfo = STUDIO_COLORS[std.id] || {
+                accent: accentColor,
+                bgActive: "rgba(39, 39, 42, 0.08)",
+                bgHover: "rgba(39, 39, 42, 0.03)",
+                gradient: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}aa 100%)`,
+                textGlow: "none"
+              };
 
               return (
                 <button
                   key={std.id}
                   onClick={std.action}
-                  className={`w-full flex items-center justify-between px-3.5 py-3.5 hover:bg-zinc-850/45 transition-all text-left border-b border-zinc-850/45 select-none cursor-pointer group ${
-                    isCurrent ? "bg-zinc-850/20" : ""
-                  }`}
+                  className="w-full flex items-center justify-between px-4 py-3.5 transition-all duration-300 text-left border-b border-zinc-850/40 select-none cursor-pointer group relative overflow-hidden"
+                  style={{
+                    backgroundColor: isCurrent ? colorInfo.bgActive : "transparent"
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isCurrent) {
+                      e.currentTarget.style.backgroundColor = colorInfo.bgHover;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isCurrent) {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }
+                  }}
                 >
+                  {isCurrent && (
+                    <div 
+                      className="absolute left-0 top-0 bottom-0 w-[3px]"
+                      style={{ backgroundColor: colorInfo.accent }}
+                    />
+                  )}
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <div 
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-md shrink-0 transition-all" 
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-md shrink-0 transition-all duration-300" 
                       style={{ 
-                        background: isCurrent
-                          ? `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}aa 100%)` 
-                          : "linear-gradient(135deg, #27272a 0%, #18181b 100%)" 
+                        background: colorInfo.gradient,
+                        boxShadow: isCurrent ? colorInfo.textGlow : "none",
+                        transform: isCurrent ? "scale(1.05)" : "scale(1)"
                       }}
                     >
                       <Icon className="w-3.5 h-3.5" />
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="text-[11px] font-mono font-bold text-zinc-100 uppercase tracking-tight leading-none truncate group-hover:text-white transition-colors">
+                      <span 
+                        className="text-[11px] font-mono font-bold uppercase tracking-tight leading-none truncate transition-colors duration-300"
+                        style={{
+                          color: isCurrent ? colorInfo.accent : "#f4f4f5",
+                          textShadow: isCurrent ? `0 0 10px ${colorInfo.accent}25` : "none"
+                        }}
+                      >
                         {std.label}
                       </span>
                       <span className="text-[8.5px] font-mono text-zinc-500 uppercase tracking-wider truncate font-semibold mt-1">
@@ -289,7 +571,12 @@ export default function PrimarySidebar({
                       </span>
                     </div>
                   </div>
-                  <div className="text-zinc-555 shrink-0 ml-2 group-hover:text-zinc-300 transition-colors">
+                  <div 
+                    className="shrink-0 ml-2 transition-all duration-300"
+                    style={{
+                      color: isCurrent ? colorInfo.accent : "#555"
+                    }}
+                  >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </div>
                 </button>
@@ -297,14 +584,9 @@ export default function PrimarySidebar({
             })}
           </div>
 
-          {/* Connected Bottom settings/login actions */}
-          <div className="border-t border-zinc-850 bg-zinc-930/40 divide-y divide-zinc-850/45 shrink-0">
+          {/* Connected Bottom settings actions */}
+          <div className="border-t border-zinc-900 bg-zinc-950 divide-y divide-zinc-900/60 shrink-0">
             {[
-              { id: "login" as const, label: "Login Account", icon: LogIn, desc: "Supabase connection status", action: () => {
-                handleSetActiveStudio?.("software");
-                if (onSelectSection) onSelectSection("login");
-                setSidebarPage("software");
-              } },
               { id: "settings" as const, label: "Studio Settings", icon: Settings, desc: "Theme options & configurations", action: () => {
                 handleSetActiveStudio?.("software");
                 if (onSelectSection) onSelectSection("settings");
@@ -316,17 +598,24 @@ export default function PrimarySidebar({
                 <button
                   key={std.id}
                   onClick={std.action}
-                  className="w-full flex items-center justify-between px-3.5 py-3 hover:bg-zinc-850/45 transition-all text-left select-none cursor-pointer group"
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-zinc-900/50 transition-all text-left select-none cursor-pointer group"
                 >
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-[11px] font-mono font-bold text-zinc-100 uppercase tracking-tight leading-none truncate group-hover:text-white transition-colors">
-                      {std.label}
-                    </span>
-                    <span className="text-[8.5px] font-mono text-zinc-500 uppercase tracking-wider truncate font-semibold mt-1">
-                      {std.desc}
-                    </span>
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div 
+                      className="w-7 h-7 rounded-lg bg-[#0494f4] flex items-center justify-center text-white shadow-md shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-300" 
+                    >
+                      <img src="/icon-512-maskable.png" alt="Gothwad Icon" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[11px] font-mono font-bold text-zinc-100 uppercase tracking-tight leading-none truncate group-hover:text-white transition-colors">
+                        {std.label}
+                      </span>
+                      <span className="text-[8.5px] font-mono text-zinc-500 uppercase tracking-wider truncate font-semibold mt-1">
+                        {std.desc}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-zinc-400 shrink-0 ml-2 group-hover:text-white transition-all p-1.5 bg-zinc-950/50 rounded-lg border border-zinc-850/80">
+                  <div className="text-zinc-400 shrink-0 ml-2 group-hover:text-white transition-all p-1.5 bg-zinc-900/50 rounded-lg border border-zinc-800">
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                 </button>
@@ -521,43 +810,7 @@ export default function PrimarySidebar({
               </button>
             </div>
 
-            {/* SECTION 6: LOGIN ACCOUNT */}
-            <div className="flex flex-col bg-zinc-900/40">
-              <button
-                onClick={() => {
-                  if (onSelectSection) onSelectSection("login");
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-3.5 hover:bg-zinc-850/45 transition-all text-left border-b border-zinc-850/45 select-none cursor-pointer group ${
-                  activeSection === "login" ? "bg-zinc-850/20" : ""
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div 
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-md shrink-0 transition-all" 
-                    style={{ 
-                      background: activeSection === "login" 
-                        ? `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}aa 100%)` 
-                        : "linear-gradient(135deg, #27272a 0%, #18181b 100%)" 
-                    }}
-                  >
-                    <LogIn className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[11px] font-mono font-bold text-zinc-100 uppercase tracking-tight leading-none truncate group-hover:text-white transition-colors">
-                      Login Account
-                    </span>
-                    <span className="text-[8.5px] font-mono text-zinc-500 uppercase tracking-wider truncate font-semibold mt-1">
-                      Supabase connection status
-                    </span>
-                  </div>
-                </div>
-                <div className="text-zinc-550 shrink-0 ml-2 group-hover:text-zinc-300 transition-colors">
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </div>
-              </button>
-            </div>
-
-            {/* SECTION 7: STUDIO SETTINGS */}
+            {/* SECTION 6: STUDIO SETTINGS */}
             <div className="flex flex-col bg-zinc-900/40">
               <button
                 onClick={() => {
@@ -592,262 +845,6 @@ export default function PrimarySidebar({
                 </div>
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {sidebarPage === "chat_playground" && (
-        <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950/15">
-
-          {/* Dynamic Tab Switchers */}
-          <div className="h-11 border-b border-zinc-850 flex items-center justify-around bg-zinc-950/20 shrink-0">
-            <button
-              onClick={() => setChatTab("history")}
-              className={`flex-1 h-full text-[10px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1.5 cursor-pointer ${
-                chatTab === "history" 
-                  ? "text-zinc-100 border-[#375a7f]" 
-                  : "text-zinc-500 border-transparent hover:text-zinc-300"
-              }`}
-              style={chatTab === "history" ? { borderBottomColor: accentColor } : {}}
-            >
-              <History className="w-3.5 h-3.5" />
-              History
-            </button>
-            <button
-              onClick={() => setChatTab("parameters")}
-              className={`flex-1 h-full text-[10px] font-bold uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1.5 cursor-pointer ${
-                chatTab === "parameters" 
-                  ? "text-zinc-100 border-[#375a7f]" 
-                  : "text-zinc-500 border-transparent hover:text-zinc-300"
-              }`}
-              style={chatTab === "parameters" ? { borderBottomColor: accentColor } : {}}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              Parameters
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 space-y-4 font-mono text-xs">
-            {chatTab === "history" && (
-              <div className="flex flex-col h-full space-y-3">
-                {/* Start New Chat Button */}
-                <button
-                  onClick={() => {
-                    if (!onUpdateChatSessions || !onSetActiveChatSessionId) return;
-                    const newId = Date.now().toString();
-                    const newSess = {
-                      id: newId,
-                      title: `Session ${chatSessions.length + 1}`,
-                      messages: [
-                        {
-                          id: "welcome-" + newId,
-                          role: "assistant",
-                          content: "Welcome to a fresh conversation thread! Choose your model and system parameters on the left to begin your workflow.",
-                          timestamp: new Date()
-                        }
-                      ],
-                      timestamp: Date.now(),
-                      selectedModel: "google/gemini-2.5-flash",
-                      systemInstruction: "You are an elite AI assistant trained by Google. Respond with precise, high-fidelity details, formatting code elegantly using Markdown.",
-                      temperature: 0.7,
-                      maxTokens: 2048
-                    };
-                    const updated = [newSess, ...chatSessions];
-                    onUpdateChatSessions(updated);
-                    onSetActiveChatSessionId(newId);
-                  }}
-                  className="w-full py-2.5 px-3 bg-zinc-850 hover:bg-zinc-800 text-zinc-100 border border-zinc-750 hover:border-zinc-700 rounded-lg flex items-center justify-center gap-2 font-bold uppercase tracking-wide transition-all cursor-pointer text-[10px]"
-                >
-                  <Plus className="w-4 h-4" style={{ color: accentColor }} />
-                  Start New Chat
-                </button>
-
-                {/* Conversation sessions list */}
-                <div className="flex-1 space-y-1 py-1 overflow-y-auto no-scrollbar">
-                  {chatSessions.map((s) => {
-                    const isActive = s.id === activeChatSessionId;
-                    return (
-                      <div
-                        key={s.id}
-                        onClick={() => {
-                          if (onSetActiveChatSessionId) onSetActiveChatSessionId(s.id);
-                        }}
-                        className={`group flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all border ${
-                          isActive 
-                            ? "bg-zinc-850/50 border-zinc-750/50 text-zinc-100" 
-                            : "bg-transparent border-transparent hover:bg-zinc-900/40 text-zinc-400 hover:text-zinc-200"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <MessageSquare className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300 shrink-0" />
-                          <div className="flex flex-col min-w-0 leading-tight">
-                            <span className="text-[11px] font-sans font-medium truncate">{s.title}</span>
-                            <span className="text-[8.5px] text-zinc-550 font-mono uppercase mt-0.5 truncate">
-                              {MODELS.find(m => m.value === s.selectedModel)?.label.split(" (")[0] || s.selectedModel}
-                            </span>
-                          </div>
-                        </div>
-                        {chatSessions.length > 1 && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!onUpdateChatSessions || !onSetActiveChatSessionId) return;
-                              if (confirm("Are you sure you want to delete this session?")) {
-                                const updated = chatSessions.filter(item => item.id !== s.id);
-                                onUpdateChatSessions(updated);
-                                if (activeChatSessionId === s.id) {
-                                  onSetActiveChatSessionId(updated[0].id);
-                                }
-                              }
-                            }}
-                            className="p-1 text-zinc-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-zinc-800/40 shrink-0"
-                            title="Delete Session"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {chatTab === "parameters" && (
-              <div className="space-y-4">
-                {/* Model Target selection */}
-                <div className="space-y-1.5">
-                  <label className="text-zinc-500 font-bold uppercase tracking-wider text-[9px]">Model Target</label>
-                  <select
-                    value={chatSessions.find(s => s.id === activeChatSessionId)?.selectedModel || "google/gemini-2.5-flash"}
-                    onChange={(e) => {
-                      if (!onUpdateChatSessions) return;
-                      const updated = chatSessions.map(s => {
-                        if (s.id === activeChatSessionId) {
-                          return { ...s, selectedModel: e.target.value };
-                        }
-                        return s;
-                      });
-                      onUpdateChatSessions(updated);
-                    }}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-300 focus:outline-none transition-all cursor-pointer font-sans text-xs"
-                  >
-                    {MODELS.map((m) => (
-                      <option key={m.value} value={m.value}>{m.label}</option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-zinc-555 font-sans mt-1 leading-normal">
-                    {MODELS.find(m => m.value === (chatSessions.find(s => s.id === activeChatSessionId)?.selectedModel || "google/gemini-2.5-flash"))?.desc}
-                  </p>
-                </div>
-
-                {/* System Instruction */}
-                <div className="space-y-1.5">
-                  <label className="text-zinc-500 font-bold uppercase tracking-wider text-[9px]">System Instructions</label>
-                  <textarea
-                    value={chatSessions.find(s => s.id === activeChatSessionId)?.systemInstruction || ""}
-                    onChange={(e) => {
-                      if (!onUpdateChatSessions) return;
-                      const updated = chatSessions.map(s => {
-                        if (s.id === activeChatSessionId) {
-                          return { ...s, systemInstruction: e.target.value };
-                        }
-                        return s;
-                      });
-                      onUpdateChatSessions(updated);
-                    }}
-                    rows={4}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-zinc-300 focus:outline-none transition-all font-sans text-xs resize-none"
-                    placeholder="Instruct the model how to act..."
-                  />
-                </div>
-
-                {/* Temperature range */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-[10px]">
-                    <label className="text-zinc-500 font-bold uppercase tracking-wider text-[9px]">Temperature</label>
-                    <span className="text-emerald-400 font-bold">{(chatSessions.find(s => s.id === activeChatSessionId)?.temperature ?? 0.7).toFixed(2)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.0"
-                    max="1.5"
-                    step="0.05"
-                    value={chatSessions.find(s => s.id === activeChatSessionId)?.temperature ?? 0.7}
-                    onChange={(e) => {
-                      if (!onUpdateChatSessions) return;
-                      const updated = chatSessions.map(s => {
-                        if (s.id === activeChatSessionId) {
-                          return { ...s, temperature: parseFloat(e.target.value) };
-                        }
-                        return s;
-                      });
-                      onUpdateChatSessions(updated);
-                    }}
-                    className="w-full h-1 bg-zinc-800 rounded-lg cursor-pointer"
-                    style={{ accentColor }}
-                  />
-                </div>
-
-                {/* Max Output Tokens ceiling */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-[10px]">
-                    <label className="text-zinc-500 font-bold uppercase tracking-wider text-[9px]">Max Output Tokens</label>
-                    <span className="text-zinc-400 font-bold">{chatSessions.find(s => s.id === activeChatSessionId)?.maxTokens ?? 2048}</span>
-                  </div>
-                  <input
-                    type="number"
-                    min="100"
-                    max="8192"
-                    step="100"
-                    value={chatSessions.find(s => s.id === activeChatSessionId)?.maxTokens ?? 2048}
-                    onChange={(e) => {
-                      if (!onUpdateChatSessions) return;
-                      const updated = chatSessions.map(s => {
-                        if (s.id === activeChatSessionId) {
-                          return { ...s, maxTokens: parseInt(e.target.value) || 2048 };
-                        }
-                        return s;
-                      });
-                      onUpdateChatSessions(updated);
-                    }}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-300 focus:outline-none transition-all"
-                  />
-                </div>
-
-                {/* OpenRouter overrides */}
-                <div className="space-y-2 border-t border-zinc-850 pt-4">
-                  <div className="flex items-center gap-1.5 text-zinc-500">
-                    <Key className="w-3.5 h-3.5 text-zinc-500" />
-                    <span className="font-bold uppercase tracking-wider text-[9px]">OpenRouter API Key</span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type={showApiKey ? "text" : "password"}
-                      value={customApiKey}
-                      onChange={(e) => {
-                        if (onSetCustomApiKey) {
-                          onSetCustomApiKey(e.target.value);
-                          safeStorage.setItem("gothwad_ai_key", e.target.value);
-                        }
-                      }}
-                      placeholder="sk-or-v1-..."
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-1.5 pl-2.5 pr-8 text-zinc-300 focus:outline-none font-mono text-[10px]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-2 top-2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
-                    >
-                      {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                  <p className="text-[9px] text-zinc-650 font-sans leading-normal">
-                    Leave empty to fallback to Gothwad Ai Studio's host system key. Input custom key for unlimited personal usage limits.
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

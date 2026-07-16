@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 
-export type SidebarSection = "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud" | "login";
+export type SidebarSection = "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud";
 
 interface ActivityBarProps {
   activeSection: SidebarSection;

@@ -48,7 +48,9 @@ export default class ErrorBoundary extends React.Component<Props, State> {
 
   private handleRestartApp = () => {
     // Quick session restart - clear state and reload cleanly
-    localStorage.removeItem("gothwad_active_session"); 
+    try {
+      localStorage.removeItem("gothwad_active_session"); 
+    } catch (e) {}
     window.location.reload();
   };
 

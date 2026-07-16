@@ -68,24 +68,7 @@ export function useOAuth(
     
     if (code) {
       window.history.replaceState({}, document.title, window.location.pathname);
-      
-      fetch("/api/auth/github/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.access_token) {
-          login(data.access_token);
-        } else if (data.error) {
-          alert(`Authentication error: ${data.error_description || data.error}`);
-        }
-      })
-      .catch(err => {
-        console.error("Token exchange failed", err);
-        alert("GitHub Serverless Callback: Token exchange requires an active Express backend. Please use a GitHub Personal Access Token (PAT) under settings to log in on Cloudflare Pages/static hosting.");
-      });
+      alert("GitHub Serverless Callback: OAuth token exchange requires a server backend. Since Gothwad Ai Studio is now running in 100% Client-Side Serverless mode for top-notch privacy, please use a GitHub Personal Access Token (PAT) to connect.");
     }
 
     return () => {

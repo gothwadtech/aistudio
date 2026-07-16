@@ -18,6 +18,8 @@ interface SettingsPanelProps {
   showCompactTitle?: boolean;
   customApiKey: string;
   onSetCustomApiKey: (key: string) => void;
+  groqApiKey: string;
+  onSetGroqApiKey: (key: string) => void;
   appModels: any[];
   onUpdateAppModels: (models: any[]) => void;
 }
@@ -39,6 +41,8 @@ export default function SettingsPanel({
   showCompactTitle = false,
   customApiKey,
   onSetCustomApiKey,
+  groqApiKey,
+  onSetGroqApiKey,
   appModels = [],
   onUpdateAppModels
 }: SettingsPanelProps) {
@@ -63,6 +67,7 @@ export default function SettingsPanel({
   const [newModelChats, setNewModelChats] = useState(true);
   const [newModelSoftware, setNewModelSoftware] = useState(true);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showGroqKey, setShowGroqKey] = useState(false);
 
   const handleResetModels = () => {
     if (window.confirm("Are you sure you want to reset all models to defaults? This will erase custom added models.")) {
@@ -375,6 +380,37 @@ export default function SettingsPanel({
         </div>
         <p className="text-[8.5px] text-zinc-600 leading-normal">
           If empty, Gothwad AI Studio will fall back to its internal workspace proxy engine keys.
+        </p>
+      </div>
+
+      {/* Groq API Key configuration */}
+      <div className="space-y-2.5 bg-zinc-950/40 p-3 rounded-lg border border-zinc-850">
+        <div className="flex items-center gap-1.5">
+          <Key className="w-3.5 h-3.5" style={{ color: accentColor }} />
+          <span className="text-[#375a7f] font-bold uppercase block tracking-wide text-[9px]" style={{ color: accentColor }}>Groq API Credentials</span>
+        </div>
+        <p className="text-zinc-500 text-[9px] leading-relaxed">
+          Configure a custom Groq API key to use ultra-fast open-weights model inference (such as Llama 3.3, DeepSeek R1 70B, Gemma 2) directly inside your companion.
+        </p>
+        
+        <div className="relative pt-1">
+          <input
+            type={showGroqKey ? "text" : "password"}
+            value={groqApiKey}
+            onChange={(e) => onSetGroqApiKey(e.target.value)}
+            placeholder="gsk_..."
+            className="w-full bg-zinc-900 border border-zinc-800 text-[10.5px] font-mono text-zinc-300 rounded px-2.5 py-1.5 pr-8 outline-none focus:border-zinc-700"
+          />
+          <button
+            type="button"
+            onClick={() => setShowGroqKey(!showGroqKey)}
+            className="absolute right-2 top-2.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            {showGroqKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+        <p className="text-[8.5px] text-zinc-600 leading-normal">
+          Provide your Groq API Key (gsk_...) to unlock blazing-fast sub-second model responses.
         </p>
       </div>
 

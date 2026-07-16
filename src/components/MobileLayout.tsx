@@ -3,16 +3,26 @@ import { GrixFileNode } from "../types/github";
 import MobileHeader from "./MobileHeader";
 import PrimarySidebar from "./PrimarySidebar";
 import SettingsPanel from "./sidebar/SettingsPanel";
-import GothwadAuthPanel from "./sidebar/GothwadAuthPanel";
 import ExplorerPanel from "./sidebar/ExplorerPanel";
 import SourceControlPanel from "./sidebar/SourceControlPanel";
 
-const ChatStudio = React.lazy(() => import("../features/chatai/ChatStudio"));
+const ChatStudio = React.lazy(() => import("../features/chat/ChatStudio"));
 const CodeEditor = React.lazy(() => import("./CodeEditor"));
 const WelcomeScreen = React.lazy(() => import("./WelcomeScreen"));
 const AppPreviewPanel = React.lazy(() => import("./AppPreviewPanel"));
 const AiCompanionPanel = React.lazy(() => import("./AiCompanionPanel"));
 const IntegrationsPanel = React.lazy(() => import("./IntegrationsPanel"));
+
+const GothwadStudio = React.lazy(() => import("../features/gothwad/components/GothwadStudio"));
+const ChatPlaygroundStudio = React.lazy(() => import("../features/chat/components/ChatPlaygroundStudio"));
+const VoiceStudio = React.lazy(() => import("../features/voice/components/VoiceStudio"));
+const ImageGenStudio = React.lazy(() => import("../features/image/components/ImageGenStudio"));
+const VideoGenStudio = React.lazy(() => import("../features/video/components/VideoGenStudio"));
+const AudioGenStudio = React.lazy(() => import("../features/audio/components/AudioGenStudio"));
+const PresentationStudio = React.lazy(() => import("../features/presentation/components/PresentationStudio"));
+const WebsiteStudio = React.lazy(() => import("../features/website/components/WebsiteStudio"));
+const WebAppStudio = React.lazy(() => import("../features/webapp/components/WebAppStudio"));
+import { safeStorage } from "../utils/safeStorage";
 import {
   X,
   Eye,
@@ -42,7 +52,7 @@ interface MobileLayoutProps {
   isMobile: boolean;
   mobileActiveTab: "explorer" | "editor" | "git" | "preview" | "ai" | "settings";
   setMobileActiveTab: (tab: "explorer" | "editor" | "git" | "preview" | "ai" | "settings") => void;
-  activeSection: "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud" | "login";
+  activeSection: "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud";
   setActiveSection: (section: any) => void;
   user: any;
   repos: any[];
@@ -85,8 +95,12 @@ interface MobileLayoutProps {
   onUpdateChatSessions: (sessions: any[]) => void;
   customApiKey: string;
   onSetCustomApiKey: (key: string) => void;
+  groqApiKey: string;
+  onSetGroqApiKey: (key: string) => void;
   appModels: any[];
   onUpdateAppModels: (models: any[]) => void;
+  activeMainOption?: string;
+  setActiveMainOption?: (val: string | ((prev: string) => string)) => void;
 }
 
 export default function MobileLayout({
@@ -146,9 +160,57 @@ export default function MobileLayout({
   onUpdateChatSessions,
   customApiKey,
   onSetCustomApiKey,
+  groqApiKey,
+  onSetGroqApiKey,
   appModels,
-  onUpdateAppModels
+  onUpdateAppModels,
+  activeMainOption = "gothwad_ai",
+  setActiveMainOption
 }: MobileLayoutProps) {
+  const renderActiveMainWorkspace = () => {
+    const openMobileMenu = () => setIsLeftDrawerOpen(true);
+    switch (activeMainOption) {
+      case "gothwad_ai":
+        return <GothwadStudio accentColor={accentColor} customApiKey={customApiKey} onToggleSidebar={openMobileMenu} />;
+      case "chat":
+        return (
+          <ChatStudio 
+            accentColor={accentColor} 
+            isMobile={isMobile} 
+            onOpenMenu={openMobileMenu}
+            onToggleSidebar={openMobileMenu}
+            onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }}
+            sessions={chatSessions}
+            activeSessionId={activeChatSessionId}
+            onSetActiveSessionId={onSetActiveChatSessionId}
+            onUpdateSessions={onUpdateChatSessions}
+            customApiKey={customApiKey}
+            onSetCustomApiKey={onSetCustomApiKey}
+            groqApiKey={groqApiKey}
+            onSetGroqApiKey={onSetGroqApiKey}
+            appModels={appModels}
+            onUpdateAppModels={onUpdateAppModels}
+          />
+        );
+      case "voice_assistant":
+        return <VoiceStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={openMobileMenu} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "image_gen":
+        return <ImageGenStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={openMobileMenu} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "video_gen":
+        return <VideoGenStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={openMobileMenu} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "audio_gen":
+        return <AudioGenStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={openMobileMenu} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "presentation_ai":
+        return <PresentationStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={openMobileMenu} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "website_builder_ai":
+        return <WebsiteStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={openMobileMenu} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "web_app_builder_ai":
+        return <WebAppStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={openMobileMenu} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      default:
+        return <GothwadStudio accentColor={accentColor} customApiKey={customApiKey} onToggleSidebar={openMobileMenu} />;
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden w-full h-full relative">
       
@@ -173,22 +235,10 @@ export default function MobileLayout({
           <React.Suspense fallback={
             <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
               <div className="h-5 w-5 animate-spin rounded-full border-t-2 border-r-2 border-zinc-400" style={{ borderTopColor: accentColor }} />
-              <span className="font-mono text-[10px] animate-pulse">LOADING CHAT STUDIO...</span>
+              <span className="font-mono text-[10px] animate-pulse">LOADING WORKSPACE...</span>
             </div>
           }>
-            <ChatStudio 
-              accentColor={accentColor} 
-              isMobile={isMobile} 
-              onOpenMenu={() => setIsLeftDrawerOpen(true)}
-              sessions={chatSessions}
-              activeSessionId={activeChatSessionId}
-              onSetActiveSessionId={onSetActiveChatSessionId}
-              onUpdateSessions={onUpdateChatSessions}
-              customApiKey={customApiKey}
-              onSetCustomApiKey={onSetCustomApiKey}
-              appModels={appModels}
-              onUpdateAppModels={onUpdateAppModels}
-            />
+            {renderActiveMainWorkspace()}
           </React.Suspense>
         )}
 
@@ -348,20 +398,15 @@ export default function MobileLayout({
                       showCompactTitle={true}
                       customApiKey={customApiKey}
                       onSetCustomApiKey={onSetCustomApiKey}
+                      groqApiKey={groqApiKey}
+                      onSetGroqApiKey={onSetGroqApiKey}
                       appModels={appModels}
                       onUpdateAppModels={onUpdateAppModels}
                     />
                   </div>
                 )}
 
-                {activeSection === "login" && (
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-955">
-                    <div className="flex items-center justify-between border-b border-zinc-850 pb-2 mb-2">
-                      <h2 className="text-xs font-mono font-bold tracking-tight text-zinc-300 uppercase">Login Account</h2>
-                    </div>
-                    <GothwadAuthPanel accentColor={accentColor} />
-                  </div>
-                )}
+
               </div>
             )}
 
@@ -497,6 +542,7 @@ export default function MobileLayout({
                     accentColor={accentColor}
                     appModels={appModels}
                     customApiKey={customApiKey}
+                    groqApiKey={groqApiKey}
                     isMobile={true}
                     onOpenMenu={() => setIsLeftDrawerOpen(true)}
                   />
@@ -580,6 +626,8 @@ export default function MobileLayout({
               customApiKey={customApiKey}
               onSetCustomApiKey={onSetCustomApiKey}
               onToggleSidebar={() => setIsLeftDrawerOpen(false)}
+              activeMainOption={activeMainOption}
+              setActiveMainOption={setActiveMainOption}
             />
           </div>
         </div>

@@ -1,4 +1,4 @@
-import CodeEditor from "../features/editor/CodeEditor";
+import CodeEditor from "../features/common/editor/CodeEditor";
 export default CodeEditor;
-export type { SupportedLanguage } from "../features/editor/SyntaxHighlighter";
+export type { SupportedLanguage } from "../features/common/editor/SyntaxHighlighter";
 

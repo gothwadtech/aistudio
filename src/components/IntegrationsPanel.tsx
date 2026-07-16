@@ -7,14 +7,13 @@ import {
 import { safeStorage } from "../utils/safeStorage";
 
 // Modular Imports
-import { VercelProject, NetlifySite, SupabaseTable } from "../features/integrations/types";
+import { VercelProject, NetlifySite } from "../features/integrations/types";
 import GitHubConnector from "../features/integrations/components/github/GitHubConnector";
 import VercelDeploy from "../features/integrations/components/deployment/VercelDeploy";
 import NetlifyDeploy from "../features/integrations/components/deployment/NetlifyDeploy";
 import CloudflareDeploy from "../features/integrations/components/deployment/CloudflareDeploy";
 import CustomDeploy from "../features/integrations/components/deployment/CustomDeploy";
 import FirebaseSync from "../features/integrations/components/cloud/FirebaseSync";
-import SupabaseSync from "../features/integrations/components/cloud/SupabaseSync";
 import AppwriteSync from "../features/integrations/components/cloud/AppwriteSync";
 import CustomDbSync from "../features/integrations/components/cloud/CustomDbSync";
 
@@ -46,7 +45,7 @@ export default function IntegrationsPanel({
   
   // Tab States depend on chosen activity bar mode
   const [activeDeploymentTab, setActiveDeploymentTab] = useState<"vercel" | "netlify" | "cloudflare" | "custom">("vercel");
-  const [activeCloudTab, setActiveCloudTab] = useState<"firebase" | "supabase" | "appwrite" | "custom">("firebase");
+  const [activeCloudTab, setActiveCloudTab] = useState<"firebase" | "appwrite" | "custom">("firebase");
 
   // Vercel States
   const [vercelToken, setVercelToken] = useState(() => safeStorage.getItem("gothwad_vercel_token") || "");
@@ -83,13 +82,7 @@ export default function IntegrationsPanel({
   const [firebaseCollections, setFirebaseCollections] = useState<{ name: string; count: number }[]>([]);
   const [firebaseError, setFirebaseError] = useState("");
 
-  // Supabase States
-  const [supabaseUrl, setSupabaseUrl] = useState(() => safeStorage.getItem("gothwad_supabase_url") || "");
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState(() => safeStorage.getItem("gothwad_supabase_anon_key") || "");
-  const [showSupabaseKey, setShowSupabaseKey] = useState(false);
-  const [supabaseStatus, setSupabaseStatus] = useState<"idle" | "verifying" | "connected" | "error">("idle");
-  const [supabaseTables, setSupabaseTables] = useState<SupabaseTable[]>([]);
-  const [supabaseError, setSupabaseError] = useState("");
+
 
   // Appwrite States
   const [appwriteEndpoint, setAppwriteEndpoint] = useState(() => safeStorage.getItem("gothwad_appwrite_endpoint") || "https://cloud.appwrite.io/v1");
@@ -110,7 +103,6 @@ export default function IntegrationsPanel({
     if (vercelToken) verifyVercel(vercelToken, true);
     if (netlifyToken) verifyNetlify(netlifyToken, true);
     if (cloudflareToken && cloudflareAccountId) verifyCloudflare(cloudflareToken, cloudflareAccountId, true);
-    if (supabaseUrl && supabaseAnonKey) verifySupabase(supabaseUrl, supabaseAnonKey, true);
     if (firebaseProjectId) verifyFirebase(firebaseProjectId, firebaseConfigJson, true);
     if (appwriteProjectId && appwriteApiKey) verifyAppwrite(appwriteEndpoint, appwriteProjectId, appwriteApiKey, true);
     if (customDeployUrl) setCustomDeployStatus("connected");
@@ -342,81 +334,7 @@ export default function IntegrationsPanel({
     setFirebaseStatus("idle");
   };
 
-  // --- Supabase Verification ---
-  const verifySupabase = async (urlVal: string, keyVal: string, isSilent = false) => {
-    let cleanUrl = urlVal.trim();
-    if (cleanUrl.endsWith("/")) {
-      cleanUrl = cleanUrl.slice(0, -1);
-    }
-    if (!cleanUrl || !keyVal.trim()) {
-      setSupabaseStatus("error");
-      setSupabaseError("Supabase URL and Public Anon Key are required.");
-      return;
-    }
-    setSupabaseStatus("verifying");
-    setSupabaseError("");
 
-    try {
-      const res = await fetch(`${cleanUrl}/rest/v1/`, {
-        headers: { 
-          apikey: keyVal.trim(),
-          Authorization: `Bearer ${keyVal.trim()}`
-        }
-      });
-
-      if (!res.ok) {
-        throw new Error(`Supabase returned status ${res.status}`);
-      }
-
-      const spec = await res.json();
-      const paths = spec.paths ? Object.keys(spec.paths) : [];
-      
-      const parsedTables: SupabaseTable[] = [];
-      const visited = new Set<string>();
-
-      paths.forEach(p => {
-        if (p === "/" || p.includes("{")) return;
-        const segment = p.replace(/^\//, "");
-        if (segment && !visited.has(segment)) {
-          visited.add(segment);
-          parsedTables.push({
-            name: segment,
-            description: spec.definitions?.[segment]?.description || `Supabase REST collection for '${segment}'`
-          });
-        }
-      });
-
-      setSupabaseTables(parsedTables);
-      setSupabaseStatus("connected");
-      safeStorage.setItem("gothwad_supabase_url", cleanUrl);
-      safeStorage.setItem("gothwad_supabase_anon_key", keyVal.trim());
-    } catch (err: any) {
-      console.warn("Supabase API request failed, using local schema fallback:", err);
-      if (cleanUrl.includes("supabase.co") || keyVal === "demo_key" || isSilent) {
-        setSupabaseTables([
-          { name: "profiles", description: "User accounts profile metadata" },
-          { name: "todos", description: "Interactive task checklist logs" },
-          { name: "projects", description: "Studio workspace items metadata" },
-          { name: "messages", description: "Realtime messaging dialog stack" }
-        ]);
-        setSupabaseStatus("connected");
-        safeStorage.setItem("gothwad_supabase_url", cleanUrl);
-        safeStorage.setItem("gothwad_supabase_anon_key", keyVal.trim());
-      } else {
-        setSupabaseStatus("error");
-        setSupabaseError(`Supabase connection failed: ${err.message || err}`);
-      }
-    }
-  };
-
-  const handleDisconnectSupabase = () => {
-    safeStorage.removeItem("gothwad_supabase_url");
-    safeStorage.removeItem("gothwad_supabase_anon_key");
-    setSupabaseUrl("");
-    setSupabaseAnonKey("");
-    setSupabaseTables([]);
-    setSupabaseStatus("idle");
-  };
 
   // --- Appwrite Verification ---
   const verifyAppwrite = async (endpointVal: string, projIdVal: string, apiKeyVal: string, isSilent = false) => {
@@ -567,7 +485,7 @@ export default function IntegrationsPanel({
         <>
           {/* Inner tab switcher */}
           <div className="p-2 border-b border-zinc-850/60 bg-zinc-950 flex gap-1 overflow-x-auto no-scrollbar shrink-0">
-            {["firebase", "supabase", "appwrite", "custom"].map((tab) => (
+            {["firebase", "appwrite", "custom"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveCloudTab(tab as any)}
@@ -592,19 +510,6 @@ export default function IntegrationsPanel({
                 firebaseError={firebaseError}
                 verifyFirebase={verifyFirebase}
                 handleDisconnectFirebase={handleDisconnectFirebase}
-              />
-            )}
-
-            {activeCloudTab === "supabase" && (
-              <SupabaseSync
-                supabaseUrl={supabaseUrl}
-                setSupabaseUrl={setSupabaseUrl}
-                supabaseAnonKey={supabaseAnonKey}
-                setSupabaseAnonKey={setSupabaseAnonKey}
-                supabaseStatus={supabaseStatus}
-                supabaseTables={supabaseTables}
-                verifySupabase={verifySupabase}
-                handleDisconnectSupabase={handleDisconnectSupabase}
               />
             )}
 

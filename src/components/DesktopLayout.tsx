@@ -5,14 +5,24 @@ import StatusBar from "./StatusBar";
 import { Eye, X, Sparkles, MessageSquare, FileCode2, Menu, GitBranch, UploadCloud, Database, Settings, LogIn } from "lucide-react";
 import SettingsPanel from "./sidebar/SettingsPanel";
 import SourceControlPanel from "./sidebar/SourceControlPanel";
-import GothwadAuthPanel from "./sidebar/GothwadAuthPanel";
 
 const CodeEditor = React.lazy(() => import("./CodeEditor"));
 const AppPreviewPanel = React.lazy(() => import("./AppPreviewPanel"));
 const WelcomeScreen = React.lazy(() => import("./WelcomeScreen"));
 const AiCompanionPanel = React.lazy(() => import("./AiCompanionPanel"));
-const ChatStudio = React.lazy(() => import("../features/chatai/ChatStudio"));
+const ChatStudio = React.lazy(() => import("../features/chat/ChatStudio"));
 const IntegrationsPanel = React.lazy(() => import("./IntegrationsPanel"));
+
+const GothwadStudio = React.lazy(() => import("../features/gothwad/components/GothwadStudio"));
+const ChatPlaygroundStudio = React.lazy(() => import("../features/chat/components/ChatPlaygroundStudio"));
+const VoiceStudio = React.lazy(() => import("../features/voice/components/VoiceStudio"));
+const ImageGenStudio = React.lazy(() => import("../features/image/components/ImageGenStudio"));
+const VideoGenStudio = React.lazy(() => import("../features/video/components/VideoGenStudio"));
+const AudioGenStudio = React.lazy(() => import("../features/audio/components/AudioGenStudio"));
+const PresentationStudio = React.lazy(() => import("../features/presentation/components/PresentationStudio"));
+const WebsiteStudio = React.lazy(() => import("../features/website/components/WebsiteStudio"));
+const WebAppStudio = React.lazy(() => import("../features/webapp/components/WebAppStudio"));
+import { safeStorage } from "../utils/safeStorage";
 
 interface DesktopLayoutProps {
   accentColor: string;
@@ -20,7 +30,7 @@ interface DesktopLayoutProps {
   handleSetActiveStudio: (studio: "chat" | "software") => void;
   user: any;
   isMobile: boolean;
-  activeSection: "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud" | "login";
+  activeSection: "explorer" | "source_control" | "unpacker" | "settings" | "github" | "deployment" | "cloud";
   setActiveSection: (section: any) => void;
   selectedRepo: any;
   selectedBranch: string;
@@ -70,8 +80,12 @@ interface DesktopLayoutProps {
   onUpdateChatSessions: (sessions: any[]) => void;
   customApiKey: string;
   onSetCustomApiKey: (key: string) => void;
+  groqApiKey: string;
+  onSetGroqApiKey: (key: string) => void;
   appModels: any[];
   onUpdateAppModels: (models: any[]) => void;
+  activeMainOption?: string;
+  setActiveMainOption?: (val: string | ((prev: string) => string)) => void;
 }
 
 export default function DesktopLayout({
@@ -130,10 +144,57 @@ export default function DesktopLayout({
   onUpdateChatSessions,
   customApiKey,
   onSetCustomApiKey,
+  groqApiKey,
+  onSetGroqApiKey,
   appModels,
-  onUpdateAppModels
+  onUpdateAppModels,
+  activeMainOption = "gothwad_ai",
+  setActiveMainOption
 }: DesktopLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState<boolean>(true);
+
+  const renderActiveMainWorkspace = () => {
+    const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
+    switch (activeMainOption) {
+      case "gothwad_ai":
+        return <GothwadStudio accentColor={accentColor} customApiKey={customApiKey} onToggleSidebar={toggleSidebar} />;
+      case "chat":
+        return (
+          <ChatStudio 
+            accentColor={accentColor} 
+            isMobile={isMobile} 
+            sessions={chatSessions}
+            activeSessionId={activeChatSessionId}
+            onSetActiveSessionId={onSetActiveChatSessionId}
+            onUpdateSessions={onUpdateChatSessions}
+            customApiKey={customApiKey}
+            onSetCustomApiKey={onSetCustomApiKey}
+            groqApiKey={groqApiKey}
+            onSetGroqApiKey={onSetGroqApiKey}
+            appModels={appModels}
+            onUpdateAppModels={onUpdateAppModels}
+            onToggleSidebar={toggleSidebar}
+            onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }}
+          />
+        );
+      case "voice_assistant":
+        return <VoiceStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={toggleSidebar} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "image_gen":
+        return <ImageGenStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={toggleSidebar} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "video_gen":
+        return <VideoGenStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={toggleSidebar} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "audio_gen":
+        return <AudioGenStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={toggleSidebar} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "presentation_ai":
+        return <PresentationStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={toggleSidebar} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "website_builder_ai":
+        return <WebsiteStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={toggleSidebar} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      case "web_app_builder_ai":
+        return <WebAppStudio accentColor={accentColor} isMobile={isMobile} onToggleSidebar={toggleSidebar} onBackToMain={() => { safeStorage.setItem("gothwad_gothwad_ai_show_left_sidebar", "false"); setActiveMainOption?.("gothwad_ai"); }} />;
+      default:
+        return <GothwadStudio accentColor={accentColor} customApiKey={customApiKey} onToggleSidebar={toggleSidebar} />;
+    }
+  };
 
   const renderFullScreenSection = () => {
     if (activeSection === "source_control") {
@@ -345,6 +406,8 @@ export default function DesktopLayout({
                   user={user}
                   customApiKey={customApiKey}
                   onSetCustomApiKey={onSetCustomApiKey}
+                  groqApiKey={groqApiKey}
+                  onSetGroqApiKey={onSetGroqApiKey}
                   appModels={appModels}
                   onUpdateAppModels={onUpdateAppModels}
                 />
@@ -403,43 +466,6 @@ export default function DesktopLayout({
       );
     }
 
-    if (activeSection === "login") {
-      return (
-        <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950 p-6 font-sans">
-          <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col overflow-hidden bg-zinc-900 border border-zinc-850 rounded-2xl shadow-2xl animate-[fadeIn_0.15s_ease-out]">
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-zinc-850 flex items-center justify-between bg-zinc-930/40">
-              <div className="flex items-center gap-3">
-                <div 
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
-                  style={{ background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}aa 100%)` }}
-                >
-                  <LogIn className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-mono font-bold uppercase tracking-tight text-white">Login Account</h2>
-                  <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mt-1">Authenticate and connect with your Gothwad AI Studio cloud account</p>
-                </div>
-              </div>
-              {/* Quick Back Button */}
-              <button 
-                onClick={() => setActiveSection("explorer")}
-                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-750 text-zinc-300 rounded-lg text-xs font-mono border border-zinc-750 hover:text-white transition-all cursor-pointer"
-              >
-                ← Back to Editor
-              </button>
-            </div>
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
-              <div className="max-w-2xl mx-auto">
-                <GothwadAuthPanel accentColor={accentColor} />
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     return null;
   };
 
@@ -491,6 +517,14 @@ export default function DesktopLayout({
             activeStudio={activeStudio}
             handleSetActiveStudio={handleSetActiveStudio}
             onToggleSidebar={() => setIsSidebarOpen(false)}
+            chatSessions={chatSessions}
+            activeChatSessionId={activeChatSessionId}
+            onSetActiveChatSessionId={onSetActiveChatSessionId}
+            onUpdateChatSessions={onUpdateChatSessions}
+            customApiKey={customApiKey}
+            onSetCustomApiKey={onSetCustomApiKey}
+            activeMainOption={activeMainOption}
+            setActiveMainOption={setActiveMainOption}
           />
         )}
 
@@ -501,22 +535,10 @@ export default function DesktopLayout({
             <React.Suspense fallback={
               <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
                 <div className="h-5 w-5 animate-spin rounded-full border-t-2 border-r-2 border-zinc-400" style={{ borderTopColor: accentColor }} />
-                <span className="font-mono text-[10px] animate-pulse">LOADING CHAT STUDIO...</span>
+                <span className="font-mono text-[10px] animate-pulse">LOADING WORKSPACE...</span>
               </div>
             }>
-              <ChatStudio 
-                accentColor={accentColor} 
-                isMobile={isMobile} 
-                sessions={chatSessions}
-                activeSessionId={activeChatSessionId}
-                onSetActiveSessionId={onSetActiveChatSessionId}
-                onUpdateSessions={onUpdateChatSessions}
-                customApiKey={customApiKey}
-                onSetCustomApiKey={onSetCustomApiKey}
-                appModels={appModels}
-                onUpdateAppModels={onUpdateAppModels}
-                onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
-              />
+              {renderActiveMainWorkspace()}
             </React.Suspense>
           ) : (
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -705,6 +727,7 @@ export default function DesktopLayout({
                     accentColor={accentColor}
                     appModels={appModels}
                     customApiKey={customApiKey}
+                    groqApiKey={groqApiKey}
                   />
                 </React.Suspense>
 

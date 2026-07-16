@@ -13,6 +13,7 @@ export interface AiChatParams {
   selectedAgent: string;
   selectedModel: string;
   customApiKey?: string;
+  groqApiKey?: string;
   systemInstructionOverride?: string;
   temperature?: number;
   maxTokens?: number;
@@ -105,39 +106,82 @@ export function buildContextPrompt(
  * makes the call directly to OpenRouter client-side.
  */
 export async function callAiChat(params: AiChatParams): Promise<AiChatResponse> {
-  const isCloudflare = 
-    window.location.hostname === "aistudio.gothwadtech.com" || 
-    window.location.hostname.endsWith(".pages.dev") ||
-    window.location.hostname.endsWith(".cloudflare.com") ||
-    (!window.location.hostname.includes("run.app") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
-
-  // If NOT Cloudflare static environment, try the backend first
-  if (!isCloudflare) {
-    try {
-      const response = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          text: data.text || "No response received.",
-          usedCustomKey: !!data.usedCustomKey,
-          usedServerKey: !!data.usedServerKey,
-        };
-      }
-      
-      // If server returned 404 or other errors, we can fall back to direct API fetch below
-      console.warn(`[AI client] Backend returned ${response.status}. Falling back to client-side API call.`);
-    } catch (err) {
-      console.warn("[AI client] Failed to connect to backend server. Falling back to client-side API call.", err);
+  const isGroq = params.selectedModel.startsWith("groq/");
+  if (isGroq) {
+    const groqKey = params.groqApiKey?.trim() || safeStorage.getItem("gothwad_groq_key")?.trim();
+    if (!groqKey) {
+      throw new Error(
+        "Gothwad AI Companion: No Groq API Key provided. Please enter your Groq API Key in settings to connect with your Groq models."
+      );
     }
+
+    const systemInstruction = getSystemInstruction(params.selectedAgent, params.systemInstructionOverride);
+    const contextPrompt = buildContextPrompt(params.activeFile, params.workspaceFiles);
+
+    const openAiMessages = [];
+    openAiMessages.push({ role: "system", content: systemInstruction });
+
+    if (contextPrompt) {
+      openAiMessages.push({
+        role: "user",
+        content: `${contextPrompt}Please load this workspace file structure and the currently active file content. Confirm you understand.`
+      });
+      openAiMessages.push({
+        role: "assistant",
+        content: "Understood. I have loaded your workspace file structure and active file content. Let's build!"
+      });
+    }
+
+    for (const msg of params.messages) {
+      openAiMessages.push({
+        role: msg.role === "assistant" ? "assistant" : "user",
+        content: msg.content
+      });
+    }
+
+    const groqModelName = params.selectedModel.replace(/^groq\//, "");
+    const endpoint = "https://api.groq.com/openai/v1/chat/completions";
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${groqKey}`
+    };
+
+    const payload = {
+      model: groqModelName,
+      messages: openAiMessages,
+      temperature: typeof params.temperature === "number" ? params.temperature : 0.2,
+      max_tokens: typeof params.maxTokens === "number" ? params.maxTokens : 1500
+    };
+
+    const directRes = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!directRes.ok) {
+      const errorText = await directRes.text();
+      let parsedErr;
+      try {
+        parsedErr = JSON.parse(errorText);
+      } catch (e) {}
+      
+      const errorMsg = parsedErr?.error?.message || parsedErr?.error || errorText || `HTTP ${directRes.status}`;
+      throw new Error(`Groq Direct Error: ${errorMsg}`);
+    }
+
+    const data = await directRes.json();
+    const responseText = data.choices?.[0]?.message?.content || "No response choices returned.";
+
+    return {
+      text: responseText,
+      usedCustomKey: true,
+      usedServerKey: false,
+    };
   }
 
-  // CLIENT-SIDE DIRECT FALLBACK
-  const activeKey = params.customApiKey?.trim() || safeStorage.getItem("gothwad_ai_key")?.trim();
+  // CLIENT-SIDE DIRECT ONLY
+  const activeKey = params.customApiKey?.trim() || safeStorage.getItem("gothwad_ai_key")?.trim() || ((import.meta as any).env?.VITE_OPENROUTER_API_KEY || "");
   
   if (!activeKey) {
     throw new Error(
