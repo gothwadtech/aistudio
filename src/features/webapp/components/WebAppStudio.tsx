@@ -29,6 +29,7 @@ import GlobalStudioHeader from "../../../components/GlobalStudioHeader";
 import ChatInputBar from "../../../components/ChatInputBar";
 import { callAiChat } from "../../../utils/aiClient";
 import { safeStorage } from "../../../utils/safeStorage";
+import Editor from "@monaco-editor/react";
 
 interface WebAppSession {
   id: string;
@@ -659,18 +660,39 @@ export default function WebAppStudio({ accentColor, isMobile, onToggleSidebar, o
             </div>
 
             {/* Custom Manual Code Textarea block styled like a beautiful Editor */}
-            <div className="flex-1 bg-zinc-950 p-4 font-mono text-xs overflow-hidden flex">
-              {/* Lines gutter numbers */}
-              <div className="text-zinc-650 pr-4 select-none text-right font-mono border-r border-zinc-900 leading-normal flex flex-col h-full overflow-y-hidden select-none">
-                {Array.from({ length: editorContent.split("\n").length }).map((_, idx) => (
-                  <span key={idx} className="block min-w-[20px] text-[10.5px] leading-5">{idx + 1}</span>
-                ))}
-              </div>
-              <textarea
+            <div className="flex-1 bg-zinc-950 overflow-hidden relative">
+              <Editor
+                height="100%"
+                language={
+                  activeFilePath.endsWith(".html") ? "html" :
+                  activeFilePath.endsWith(".css") ? "css" :
+                  activeFilePath.endsWith(".json") ? "json" :
+                  activeFilePath.endsWith(".ts") || activeFilePath.endsWith(".tsx") ? "typescript" : "javascript"
+                }
+                theme="vs-dark"
                 value={editorContent}
-                onChange={(e) => handleContentChange(e.target.value)}
-                spellCheck={false}
-                className="flex-1 h-full pl-4 bg-transparent outline-none border-none text-zinc-300 resize-none leading-5 text-[10.5px] overflow-auto select-text font-mono focus:ring-0"
+                onChange={(value) => handleContentChange(value || "")}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 11,
+                  fontFamily: "var(--font-mono), monospace",
+                  lineNumbers: "on",
+                  roundedSelection: true,
+                  scrollBeyondLastLine: false,
+                  readOnly: false,
+                  automaticLayout: true,
+                  cursorBlinking: "smooth",
+                  cursorSmoothCaretAnimation: "on",
+                  padding: { top: 12, bottom: 12 },
+                  contextmenu: true,
+                  wordWrap: "on"
+                }}
+                loading={
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 text-zinc-500 font-mono text-xs select-none">
+                    <span className="w-4 h-4 rounded-full border border-t-transparent border-zinc-500 animate-spin" />
+                    <span>Loading editor...</span>
+                  </div>
+                }
               />
             </div>
           </div>

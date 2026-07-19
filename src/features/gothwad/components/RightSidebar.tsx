@@ -3,8 +3,6 @@ import { SlidersHorizontal, Bot, Terminal, HelpCircle, X } from "lucide-react";
 
 interface RightSidebarProps {
   accentColor: string;
-  selectedModel: string;
-  setSelectedModel: (val: string) => void;
   systemPrompt: string;
   setSystemPrompt: (val: string) => void;
   temperature: number;
@@ -26,8 +24,6 @@ export const SUPPORTED_MODELS = [
 
 export default function RightSidebar({
   accentColor,
-  selectedModel,
-  setSelectedModel,
   systemPrompt,
   setSystemPrompt,
   temperature,
@@ -58,48 +54,6 @@ export default function RightSidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-6">
-        {/* Model Selection */}
-        <div className="space-y-3">
-          <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
-            <Bot className="w-3.5 h-3.5" style={{ color: accentColor }} />
-            <span>Select Engine</span>
-          </h3>
-          <div className="space-y-2">
-            {SUPPORTED_MODELS.map((model) => {
-              const isSelected = selectedModel === model.id;
-              return (
-                <button
-                  key={model.id}
-                  onClick={() => setSelectedModel(model.id)}
-                  className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-1 ${
-                    isSelected
-                      ? "bg-zinc-850/50 border-indigo-500 text-white"
-                      : "bg-zinc-950/40 border-zinc-850 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200"
-                  }`}
-                  style={isSelected ? { borderColor: accentColor } : {}}
-                >
-                  <div className="flex items-center justify-between gap-1.5 w-full">
-                    <span className="text-xs font-semibold truncate">{model.name}</span>
-                    <span 
-                      className={`text-[8px] font-mono font-bold px-1.5 py-0.2 rounded shrink-0 ${
-                        isSelected 
-                          ? "bg-indigo-950 text-indigo-300 border border-indigo-900" 
-                          : "bg-zinc-900 text-zinc-500"
-                      }`}
-                      style={isSelected ? { backgroundColor: `${accentColor}15`, color: accentColor, borderColor: `${accentColor}30` } : {}}
-                    >
-                      {model.tag}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-zinc-500 leading-normal line-clamp-2">
-                    {model.desc}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* System Prompt (Persona Setter) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">

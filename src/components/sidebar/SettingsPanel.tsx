@@ -52,11 +52,20 @@ export default function SettingsPanel({
     setScaleInputText(Math.round(uiScale * 100).toString());
   }, [uiScale]);
 
-  const handleManualScaleChange = (val: string) => {
+  const handleScaleInputChange = (val: string) => {
     setScaleInputText(val);
-    const parsed = parseInt(val, 10);
-    if (!isNaN(parsed) && parsed >= 10 && parsed <= 400) {
-      onUiScaleChange(parsed / 100);
+  };
+
+  const applyScale = () => {
+    const parsed = parseInt(scaleInputText, 10);
+    if (!isNaN(parsed)) {
+      // Clamp between 30% and 400% for extreme safety
+      const clamped = Math.max(30, Math.min(400, parsed));
+      onUiScaleChange(clamped / 100);
+      setScaleInputText(clamped.toString());
+    } else {
+      // Reset to current uiScale if invalid
+      setScaleInputText(Math.round(uiScale * 100).toString());
     }
   };
 
@@ -286,7 +295,7 @@ export default function SettingsPanel({
         
         {/* Manual scale percentage input and preset selection */}
         <div className="flex items-center gap-2 pt-1">
-          <span className="text-zinc-400 shrink-0">Scale factor %:</span>
+          <span className="text-zinc-400 shrink-0 text-[10px]">Scale factor %:</span>
           <div className="relative flex-1">
             <input
               type="text"
@@ -294,12 +303,25 @@ export default function SettingsPanel({
               onChange={(e) => {
                 // Allow only numbers
                 const val = e.target.value.replace(/\D/g, "");
-                handleManualScaleChange(val);
+                handleScaleInputChange(val);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  applyScale();
+                }
+              }}
+              onBlur={applyScale}
               placeholder="100"
-              className="w-full bg-zinc-900 border border-zinc-800 text-[10.5px] text-zinc-300 rounded px-2 py-1 outline-none font-mono focus:border-zinc-700"
+              className="w-full bg-zinc-900 border border-zinc-800 text-[10.5px] text-zinc-300 rounded pl-2 pr-14 py-1 outline-none font-mono focus:border-zinc-700"
             />
-            <span className="absolute right-2 top-1 text-zinc-500 text-[9px]">%</span>
+            <button
+              type="button"
+              onClick={applyScale}
+              className="absolute right-1 top-[3px] bg-zinc-800 hover:bg-zinc-750 text-zinc-300 text-[9px] px-1.5 py-0.5 rounded border border-zinc-700 transition-all cursor-pointer font-bold uppercase hover:text-white"
+              style={{ color: accentColor }}
+            >
+              Apply
+            </button>
           </div>
         </div>
 
@@ -367,19 +389,37 @@ export default function SettingsPanel({
             type={showApiKey ? "text" : "password"}
             value={customApiKey}
             onChange={(e) => onSetCustomApiKey(e.target.value)}
-            placeholder="sk-or-v1-..."
-            className="w-full bg-zinc-900 border border-zinc-800 text-[10.5px] font-mono text-zinc-300 rounded px-2.5 py-1.5 pr-8 outline-none focus:border-zinc-700"
+            placeholder={
+              (import.meta as any).env?.VITE_OPENROUTER_API_KEY
+                ? "Server Key is in Use (Active)"
+                : "sk-or-v1-..."
+            }
+            className={`w-full bg-zinc-900 border text-[10.5px] font-mono rounded px-2.5 py-1.5 pr-8 outline-none focus:border-zinc-700 ${
+              customApiKey
+                ? "border-zinc-800 text-zinc-300"
+                : (import.meta as any).env?.VITE_OPENROUTER_API_KEY
+                ? "border-emerald-900/50 text-emerald-400 placeholder-emerald-600/75"
+                : "border-zinc-800 text-zinc-300"
+            }`}
           />
-          <button
-            type="button"
-            onClick={() => setShowApiKey(!showApiKey)}
-            className="absolute right-2 top-2.5 text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-          </button>
+          {customApiKey && (
+            <button
+              type="button"
+              onClick={() => setShowApiKey(!showApiKey)}
+              className="absolute right-2 top-2.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+          )}
         </div>
-        <p className="text-[8.5px] text-zinc-600 leading-normal">
-          If empty, Gothwad AI Studio will fall back to its internal workspace proxy engine keys.
+        <p className="text-[8.5px] leading-normal">
+          {customApiKey ? (
+            <span className="text-amber-500/90">Using your custom OpenRouter API Key. Clear to restore server default.</span>
+          ) : (import.meta as any).env?.VITE_OPENROUTER_API_KEY ? (
+            <span className="text-emerald-500/90 font-medium">🟢 Server key is in use (Active in workspace).</span>
+          ) : (
+            <span className="text-zinc-600">If empty, Gothwad AI Studio will fall back to its internal workspace proxy engine keys.</span>
+          )}
         </p>
       </div>
 

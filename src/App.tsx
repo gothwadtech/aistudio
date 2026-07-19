@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useGitHub } from "./hooks/useGitHub";
 import { useOAuth } from "./hooks/useOAuth";
+import { supabaseService } from "./services/supabase";
 import { SidebarSection } from "./components/ActivityBar";
 import { GrixFileNode } from "./types/github";
 import { safeStorage } from "./utils/safeStorage";
@@ -8,6 +9,7 @@ import { getAppModels, saveAppModels, AIModel } from "./utils/modelRegistry";
 
 const MobileLayout = React.lazy(() => import("./components/MobileLayout"));
 const DesktopLayout = React.lazy(() => import("./components/DesktopLayout"));
+const LoginScreen = React.lazy(() => import("./components/LoginScreen"));
 
 const pathToOptionMap: Record<string, { option: string; studio: "chat" | "software" }> = {
   "/chat": { option: "gothwad_ai", studio: "chat" },
@@ -226,13 +228,11 @@ export default function App() {
   });
 
   const [customApiKey, setCustomApiKey] = useState(() => {
-    const saved = safeStorage.getItem("gothwad_ai_key");
-    if (!saved) {
-      const defaultKey = (import.meta as any).env?.VITE_OPENROUTER_API_KEY || "";
-      if (defaultKey) {
-        safeStorage.setItem("gothwad_ai_key", defaultKey);
-      }
-      return defaultKey;
+    const saved = safeStorage.getItem("gothwad_ai_key") || "";
+    const systemKey = (import.meta as any).env?.VITE_OPENROUTER_API_KEY || "";
+    if (saved && systemKey && saved === systemKey) {
+      safeStorage.removeItem("gothwad_ai_key");
+      return "";
     }
     return saved;
   });
@@ -241,7 +241,11 @@ export default function App() {
 
   const handleSetCustomApiKey = (key: string) => {
     setCustomApiKey(key);
-    safeStorage.setItem("gothwad_ai_key", key);
+    if (key.trim()) {
+      safeStorage.setItem("gothwad_ai_key", key);
+    } else {
+      safeStorage.removeItem("gothwad_ai_key");
+    }
   };
 
   const handleSetGroqApiKey = (key: string) => {
@@ -400,6 +404,15 @@ export default function App() {
   }, [themeMode, accentColor, fontFamily]);
 
   useEffect(() => {
+    if (typeof document !== "undefined") {
+      // Clear documentElement and body zoom to prevent any unwanted shrinking of viewport bounds
+      (document.documentElement.style as any).zoom = "";
+      (document.body.style as any).zoom = "";
+      document.documentElement.style.setProperty("--ui-scale", uiScale.toString());
+    }
+  }, [uiScale]);
+
+  useEffect(() => {
     // Pure client-side static config fallback
     const fallbackClient = (import.meta as any).env?.VITE_GITHUB_CLIENT_ID || "";
     const fallbackUrl = (import.meta as any).env?.VITE_APP_URL || window.location.origin;
@@ -465,14 +478,23 @@ export default function App() {
     }
   };
 
+  const handleSupabaseLogin = async () => {
+    try {
+      await supabaseService.signInWithGitHub();
+    } catch (err: any) {
+      alert(err.message || "Failed to trigger Supabase login");
+    }
+  };
+
   const toggleDirectoryExpand = (path: string) => {
     loadDirectory(path);
   };
 
-  const containerStyle: React.CSSProperties = {
+  const containerStyle: React.CSSProperties & { zoom?: any } = {
     position: "relative",
-    width: "100%",
-    height: "var(--true-height, 100dvh)",
+    width: `${100 / uiScale}%`,
+    height: `calc(var(--true-height, 100dvh) / ${uiScale})`,
+    zoom: uiScale,
     overflow: "hidden",
   };
 
@@ -489,7 +511,19 @@ export default function App() {
           </div>
         </div>
       }>
-        {isMobile ? (
+        {!token ? (
+          <LoginScreen
+            isLoading={isLoading}
+            error={error}
+            patInput={patInput}
+            onPatInputChange={setPatInput}
+            onPatSubmit={handlePatLoginSubmit}
+            onTriggerSupabaseOAuth={handleSupabaseLogin}
+            onTriggerOAuth={triggerOAuthLogin}
+            authConfig={authConfig}
+            accentColor={accentColor}
+          />
+        ) : isMobile ? (
           <MobileLayout
             activeStudio={activeStudio}
             isDarkActive={isDarkActive}

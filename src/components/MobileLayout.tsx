@@ -390,8 +390,8 @@ export default function MobileLayout({
                       onFontFamilyChange={onFontFamilyChange}
                       uiScale={uiScale}
                       onUiScaleChange={onUiScaleChange}
-                      desktopMode={false}
-                      onDesktopModeChange={() => {}}
+                      desktopMode={desktopMode}
+                      onDesktopModeChange={onDesktopModeChange}
                       token={token}
                       onLogout={logout}
                       user={user}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { GitHubUser, GitHubRepo } from "../types/github";
 import { github } from "../services/github";
+import { supabaseService } from "../services/supabase";
 
 export function useGitHubAuth() {
   const [token, setTokenState] = useState<string | null>(github.getToken());
@@ -43,6 +44,61 @@ export function useGitHubAuth() {
   useEffect(() => {
     initAuth();
   }, [initAuth]);
+
+  // Intercept Supabase redirection and extract provider token
+  useEffect(() => {
+    const handleSupabaseSession = async () => {
+      try {
+        const client = supabaseService.getClient();
+        if (!client) return;
+
+        const { data: { session }, error } = await client.auth.getSession();
+        if (error) {
+          console.error("Supabase session error:", error);
+          return;
+        }
+
+        if (session) {
+          const providerToken = session.provider_token;
+          if (providerToken) {
+            initAuth(providerToken);
+            if (window.location.hash) {
+              window.history.replaceState(null, "", window.location.pathname + window.location.search);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Could not retrieve Supabase session:", e);
+      }
+    };
+
+    handleSupabaseSession();
+
+    let subscription: any = null;
+    try {
+      const client = supabaseService.getClient();
+      if (client) {
+        const authChange = client.auth.onAuthStateChange(async (event, session) => {
+          if (session && session.provider_token) {
+            initAuth(session.provider_token);
+            if (window.location.hash) {
+              window.history.replaceState(null, "", window.location.pathname + window.location.search);
+            }
+          }
+        });
+        subscription = authChange.data.subscription;
+      }
+    } catch (e) {
+      console.warn("Could not subscribe to Supabase auth changes:", e);
+    }
+
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
+  }, [initAuth]);
+
 
   const handleLogout = () => {
     github.setToken(null);

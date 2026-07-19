@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { GrixFileNode } from "../../../types/github";
-import { Save, RefreshCw, AlertCircle, FileText, Check } from "lucide-react";
+import { Save, RefreshCw, AlertCircle, Check } from "lucide-react";
 import EditorHeader from "./EditorHeader";
 import MediaViewer from "./MediaViewer";
 import { 
   SupportedLanguage, 
   detectLanguage, 
-  highlightCode, 
   isMediaFile 
 } from "./SyntaxHighlighter";
+import Editor from "@monaco-editor/react";
 
 interface CodeEditorProps {
   activeFile: GrixFileNode | null;
@@ -29,12 +29,6 @@ export default function CodeEditor({
   const [showCommitInput, setShowCommitInput] = useState<boolean>(false);
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("plain");
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
-  const [activeLineIndex, setActiveLineIndex] = useState<number>(1);
-
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const gutterRef = useRef<HTMLDivElement>(null);
-  const preRef = useRef<HTMLPreElement>(null);
-  const highlightContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-detect language when file changes
   useEffect(() => {
@@ -42,62 +36,8 @@ export default function CodeEditor({
       setSelectedLanguage(detectLanguage(activeFile.name));
       setShowCommitInput(false);
       setCommitMsg("");
-      setActiveLineIndex(1);
     }
   }, [activeFile?.path]);
-
-  // Update active line based on caret position
-  const updateActiveLine = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const cursorSel = textarea.selectionStart;
-    const textBeforeCursor = textarea.value.substring(0, cursorSel);
-    const lineNumber = textBeforeCursor.split("\n").length;
-    setActiveLineIndex(lineNumber);
-  };
-
-  // Sync scroll positions
-  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
-    const { scrollTop, scrollLeft } = e.currentTarget;
-    if (gutterRef.current) {
-      gutterRef.current.scrollTop = scrollTop;
-    }
-    if (preRef.current) {
-      preRef.current.scrollTop = scrollTop;
-      preRef.current.scrollLeft = scrollLeft;
-    }
-    if (highlightContainerRef.current) {
-      highlightContainerRef.current.style.transform = `translateY(${-scrollTop}px)`;
-    }
-  };
-
-  // Handle key controls like Tab support & save keybinds
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const textarea = e.currentTarget;
-      const { selectionStart, selectionEnd, value } = textarea;
-      
-      const tabSpaces = "  ";
-      const newValue = value.substring(0, selectionStart) + tabSpaces + value.substring(selectionEnd);
-      
-      onContentChange(newValue);
-      
-      // Keep cursor position
-      setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = selectionStart + tabSpaces.length;
-        updateActiveLine();
-      }, 0);
-    }
-
-    // Ctrl+S or Cmd+S to save/commit
-    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-      e.preventDefault();
-      if (activeFile?.isModified) {
-        setShowCommitInput(true);
-      }
-    }
-  };
 
   if (!activeFile) {
     return (
@@ -137,8 +77,27 @@ export default function CodeEditor({
     }
   };
 
-  const lines = editorContent.split("\n");
-  const lineNumbers = Array.from({ length: Math.max(lines.length, 1) }, (_, i) => i + 1);
+  const mapLanguageToMonaco = (lang: string): string => {
+    if (lang === "plain") return "plaintext";
+    return lang;
+  };
+
+  const editorOptions = {
+    minimap: { enabled: false },
+    fontSize: 12,
+    fontFamily: "var(--font-mono), monospace",
+    lineNumbers: "on" as const,
+    roundedSelection: true,
+    scrollBeyondLastLine: false,
+    readOnly: false,
+    automaticLayout: true,
+    cursorBlinking: "smooth" as const,
+    cursorSmoothCaretAnimation: "on" as const,
+    padding: { top: 12, bottom: 12 },
+    contextmenu: true,
+    wordWrap: "on" as const,
+    theme: "vs-dark",
+  };
 
   return (
     <div className="flex-1 bg-zinc-950 flex flex-col h-full border-l border-r border-zinc-900 relative">
@@ -214,81 +173,22 @@ export default function CodeEditor({
         </form>
       )}
 
-      {/* Dual Overlay Editor Workspace (Scroll Synced Gutter + Textarea Overlay) */}
-      <div className="flex-1 flex overflow-hidden relative font-mono text-[12px] leading-[20px]">
-        
-        {/* 1. Gutter / Line Numbers Column with Highlighted Active Row */}
-        <div 
-          ref={gutterRef}
-          className="w-12 text-right bg-zinc-950/40 select-none py-4 border-r border-zinc-900/40 font-mono overflow-hidden flex flex-col shrink-0 relative"
-        >
-          {lineNumbers.map((num) => {
-            const isActive = num === activeLineIndex;
-            return (
-              <div 
-                key={num} 
-                className={`h-[20px] leading-[20px] pr-3.5 tracking-tighter text-[11px] font-mono select-none relative transition-colors duration-75 flex items-center justify-end ${
-                  isActive ? "text-[#375a7f] font-bold" : "text-zinc-650 font-normal"
-                }`}
-              >
-                {isActive && (
-                  <div className="absolute inset-y-0 right-0 w-[2px] bg-[#375a7f]" />
-                )}
-                <span>{num}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* 2. Text Canvas Viewport containing Transparent Input overlaying Pre/Code and Active Row Highlight */}
-        <div className="flex-1 relative overflow-hidden bg-zinc-950">
-          
-          {/* Active Row Highlight Backplate (Scroll-Aligned via translateX/translateY) */}
-          <div className="absolute inset-0 pointer-events-none select-none z-0 overflow-hidden">
-            <div ref={highlightContainerRef} className="relative w-full h-full">
-              <div 
-                className="absolute left-0 right-0 bg-[#375a7f]/5 border-y border-[#375a7f]/10 pointer-events-none flex items-center"
-                style={{ 
-                  top: `${16 + (activeLineIndex - 1) * 20}px`, 
-                  height: '20px' 
-                }}
-              >
-                <div className="w-[3px] h-full bg-[#375a7f] rounded-r-sm" />
-              </div>
+      {/* Monaco Code Editor Workspace */}
+      <div className="flex-1 overflow-hidden relative bg-zinc-950">
+        <Editor
+          height="100%"
+          language={mapLanguageToMonaco(selectedLanguage)}
+          theme="vs-dark"
+          value={editorContent}
+          onChange={(value) => onContentChange(value || "")}
+          options={editorOptions}
+          loading={
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950 text-zinc-500 font-mono text-xs select-none">
+              <RefreshCw className="w-5 h-5 animate-spin text-[#375a7f]" />
+              <span>Initialising editor context...</span>
             </div>
-          </div>
-
-          {/* Syntax Highlighted Backdrop code */}
-          <pre 
-            ref={preRef}
-            className="absolute inset-0 m-0 p-4 font-mono text-[12px] font-medium leading-[20px] text-zinc-300 pointer-events-none select-none overflow-auto whitespace-pre no-scrollbar z-10"
-            dangerouslySetInnerHTML={{ 
-              __html: highlightCode(editorContent, selectedLanguage) + "\n" 
-            }}
-          />
-
-          {/* Interactive Text Input area (Transparent text, caret visible) */}
-          <textarea
-            ref={textareaRef}
-            className="absolute inset-0 p-4 font-mono text-[12px] font-medium leading-[20px] text-transparent caret-[#375a7f] bg-transparent resize-none outline-none overflow-auto whitespace-pre z-20 w-full h-full"
-            value={editorContent}
-            onChange={(e) => {
-              onContentChange(e.target.value);
-              setTimeout(updateActiveLine, 0);
-            }}
-            onScroll={handleScroll}
-            onKeyDown={handleKeyDown}
-            onClick={updateActiveLine}
-            onKeyUp={updateActiveLine}
-            onFocus={updateActiveLine}
-            placeholder="// Write code here..."
-            spellCheck={false}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-          />
-        </div>
-
+          }
+        />
       </div>
     </div>
   );

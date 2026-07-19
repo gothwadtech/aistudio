@@ -360,6 +360,45 @@ export default function PrimarySidebar({
         )}
       </div>
 
+      {/* 2. LOGIN & CONNECT STUDIO BANNER */}
+      <div 
+        onClick={() => {
+          if (handleSetActiveStudio) handleSetActiveStudio("software");
+          if (onSelectSection) onSelectSection("github");
+        }}
+        className="mx-3.5 my-2 p-3 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-850 rounded-xl transition-all cursor-pointer flex items-center justify-between gap-3 shrink-0 select-none group shadow-inner"
+        title="Manage GitHub & Supabase Connections"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          {token && user ? (
+            <img 
+              src={user.avatar_url} 
+              alt="avatar" 
+              className="w-8 h-8 rounded-lg border border-emerald-500/20 shadow-md shrink-0 object-cover"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-white group-hover:border-zinc-750 transition-colors shrink-0">
+              <Github className="w-4 h-4" />
+            </div>
+          )}
+          <div className="flex flex-col min-w-0">
+            <span className="text-[11px] font-mono font-bold text-zinc-200 tracking-tight leading-none uppercase group-hover:text-white transition-colors truncate">
+              {token && user ? user.name || user.login : "Login & Connect studio"}
+            </span>
+            <span className="text-[8.5px] font-mono text-zinc-500 uppercase tracking-wider mt-1 truncate leading-none">
+              {token && user ? "Connected to Github" : "Manage Studio With Github"}
+            </span>
+          </div>
+        </div>
+        
+        {token ? (
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0 mr-1" title="Active Connection" />
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 transition-colors shrink-0" />
+        )}
+      </div>
+
       {/* Page 1: Home/Main Menu of workspaces */}
       {sidebarPage === "home" && (
         <div className="flex-1 flex flex-col justify-between overflow-hidden bg-zinc-950/15">

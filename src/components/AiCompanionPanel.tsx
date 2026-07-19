@@ -161,13 +161,13 @@ export default function AiCompanionPanel({
       setActiveSessionId(defaultId);
     }
 
-    const savedKey = safeStorage.getItem("gothwad_ai_key") || (import.meta as any).env?.VITE_OPENROUTER_API_KEY || "";
+    const savedKey = safeStorage.getItem("gothwad_ai_key") || "";
     setCustomApiKeyLocal(savedKey);
 
     const savedGroqKey = safeStorage.getItem("gothwad_groq_key");
     if (savedGroqKey) setGroqApiKeyLocal(savedGroqKey);
 
-    setHasServerKey(false);
+    setHasServerKey(!!(import.meta as any).env?.VITE_OPENROUTER_API_KEY);
   }, []);
 
   // Sync to local storage
@@ -627,26 +627,43 @@ export default function AiCompanionPanel({
                       type={apiKeyVisible ? "text" : "password"}
                       value={customApiKeyLocal}
                       onChange={(e) => {
-                        setCustomApiKeyLocal(e.target.value);
-                        safeStorage.setItem("gothwad_ai_key", e.target.value);
+                        const val = e.target.value;
+                        setCustomApiKeyLocal(val);
+                        if (val.trim()) {
+                          safeStorage.setItem("gothwad_ai_key", val);
+                        } else {
+                          safeStorage.removeItem("gothwad_ai_key");
+                        }
                       }}
-                      placeholder="sk-or-v1-..."
-                      className="w-full bg-zinc-950 border border-zinc-900 rounded-lg py-1.5 pl-2.5 pr-8 text-zinc-300 focus:outline-none font-mono text-[10px]"
+                      placeholder={
+                        hasServerKey
+                          ? "Server Key is in Use (Active)"
+                          : "sk-or-v1-..."
+                      }
+                      className={`w-full bg-zinc-950 border rounded-lg py-1.5 pl-2.5 pr-8 focus:outline-none font-mono text-[10px] ${
+                        customApiKeyLocal
+                          ? "border-zinc-900 text-zinc-300"
+                          : hasServerKey
+                          ? "border-emerald-950/40 text-emerald-400 placeholder-emerald-600/75"
+                          : "border-zinc-900 text-zinc-300"
+                      }`}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setApiKeyVisible(!apiKeyVisible)}
-                      className="absolute right-2 top-2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
-                    >
-                      {apiKeyVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
+                    {customApiKeyLocal && (
+                      <button
+                        type="button"
+                        onClick={() => setApiKeyVisible(!apiKeyVisible)}
+                        className="absolute right-2 top-2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                      >
+                        {apiKeyVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
                   </div>
                   
                   <div className="bg-zinc-900/40 border border-zinc-900 p-2.5 rounded-lg text-[9.5px] text-zinc-500 font-mono leading-relaxed mt-1">
                     {customApiKeyLocal.trim() !== "" ? (
-                      <span className="text-emerald-400">🟢 Custom key is configured and active. Unlimited usage unlocked.</span>
+                      <span className="text-amber-400">🟢 Custom key is configured and active.</span>
                     ) : hasServerKey ? (
-                      <span className="text-blue-400">🔵 Gothwad Server Key is active. Ready to launch.</span>
+                      <span className="text-emerald-400">🟢 Server key is in use (Active in workspace).</span>
                     ) : (
                       <span className="text-red-400">⚠️ No keys detected. Insert your OpenRouter Key or set server variable.</span>
                     )}
