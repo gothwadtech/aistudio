@@ -7,9 +7,9 @@ import { GrixFileNode } from "./types/github";
 import { safeStorage } from "./utils/safeStorage";
 import { getAppModels, saveAppModels, AIModel } from "./utils/modelRegistry";
 
-const MobileLayout = React.lazy(() => import("./components/MobileLayout"));
-const DesktopLayout = React.lazy(() => import("./components/DesktopLayout"));
-const LoginScreen = React.lazy(() => import("./components/LoginScreen"));
+import MobileLayout from "./components/MobileLayout";
+import DesktopLayout from "./components/DesktopLayout";
+import LoginScreen from "./components/LoginScreen";
 
 const pathToOptionMap: Record<string, { option: string; studio: "chat" | "software" }> = {
   "/chat": { option: "gothwad_ai", studio: "chat" },
