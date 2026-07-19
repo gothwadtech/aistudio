@@ -14,9 +14,27 @@ export function useGitHubAuth() {
     if (newToken) {
       github.setToken(newToken);
       setTokenState(newToken);
+      try {
+        await supabaseService.saveUserGitHubToken(newToken);
+      } catch (e) {
+        console.warn("Failed to auto-save GitHub token to Supabase:", e);
+      }
     }
 
-    const currentToken = github.getToken();
+    let currentToken = github.getToken();
+    if (!currentToken) {
+      try {
+        const savedToken = await supabaseService.getUserGitHubToken();
+        if (savedToken) {
+          github.setToken(savedToken);
+          setTokenState(savedToken);
+          currentToken = savedToken;
+        }
+      } catch (e) {
+        console.warn("Failed to check Supabase for saved GitHub token:", e);
+      }
+    }
+
     if (!currentToken) return;
 
     setIsLoading(true);
@@ -59,7 +77,7 @@ export function useGitHubAuth() {
         }
 
         if (session) {
-          const providerToken = session.provider_token;
+          const providerToken = session.provider_token || session.user?.user_metadata?.github_token;
           if (providerToken) {
             initAuth(providerToken);
             if (window.location.hash) {
@@ -79,11 +97,16 @@ export function useGitHubAuth() {
       const client = supabaseService.getClient();
       if (client) {
         const authChange = client.auth.onAuthStateChange(async (event, session) => {
-          if (session && session.provider_token) {
-            initAuth(session.provider_token);
-            if (window.location.hash) {
-              window.history.replaceState(null, "", window.location.pathname + window.location.search);
+          if (session) {
+            const tokenToUse = session.provider_token || session.user?.user_metadata?.github_token;
+            if (tokenToUse) {
+              initAuth(tokenToUse);
+              if (window.location.hash) {
+                window.history.replaceState(null, "", window.location.pathname + window.location.search);
+              }
             }
+          } else if (event === "SIGNED_OUT") {
+            handleLogout();
           }
         });
         subscription = authChange.data.subscription;
@@ -105,6 +128,12 @@ export function useGitHubAuth() {
     setTokenState(null);
     setUser(null);
     setRepos([]);
+    // Sign out from Supabase as well
+    try {
+      supabaseService.signOut();
+    } catch (e) {
+      console.warn("Failed to sign out from Supabase on logout:", e);
+    }
   };
 
   const refreshRepos = async () => {

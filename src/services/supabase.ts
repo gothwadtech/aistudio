@@ -120,6 +120,32 @@ class SupabaseService {
     return data;
   }
 
+  async signInWithGoogle(redirectTo?: string) {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error("Supabase is not configured. Please supply Supabase URL and Anon Key.");
+    }
+
+    const { data, error } = await client.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: redirectTo || window.location.origin,
+        skipBrowserRedirect: true
+      }
+    });
+
+    if (error) throw error;
+    
+    if (data?.url) {
+      if (window.top) {
+        window.top.location.href = data.url;
+      } else {
+        window.location.href = data.url;
+      }
+    }
+    return data;
+  }
+
   async getSessionGitHubToken(): Promise<string | null> {
     const client = this.getClient();
     if (!client) return null;
@@ -129,6 +155,80 @@ class SupabaseService {
     
     // Supabase returns provider_token for OAuth connections
     return data.session.provider_token || null;
+  }
+
+  async signUpWithEmail(email: string, password: string) {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error("Supabase is not configured. Please supply Supabase URL and Anon Key.");
+    }
+    const { data, error } = await client.auth.signUp({
+      email,
+      password,
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  async signInWithEmail(email: string, password: string) {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error("Supabase is not configured. Please supply Supabase URL and Anon Key.");
+    }
+    const { data, error } = await client.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  async signOut() {
+    const client = this.getClient();
+    if (client) {
+      await client.auth.signOut();
+    }
+  }
+
+  async saveUserGitHubToken(token: string) {
+    const client = this.getClient();
+    if (!client) return;
+    
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (user) {
+        await client.auth.updateUser({
+          data: { github_token: token }
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to update user_metadata with github_token:", e);
+    }
+  }
+
+  async getUserGitHubToken(): Promise<string | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (user?.user_metadata?.github_token) {
+        return user.user_metadata.github_token;
+      }
+    } catch (e) {
+      console.warn("Failed to get user metadata github_token:", e);
+    }
+
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      if (session?.provider_token) {
+        return session.provider_token;
+      }
+    } catch (e) {
+      console.warn("Failed to get provider_token from session:", e);
+    }
+    
+    return null;
   }
 }
 

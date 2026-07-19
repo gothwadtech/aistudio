@@ -80,6 +80,43 @@ export default function App() {
     refreshRepos
   } = useGitHub();
 
+  const [sbUser, setSbUser] = useState<any>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const client = supabaseService.getClient();
+        if (client) {
+          const { data: { user } } = await client.auth.getUser();
+          setSbUser(user);
+        }
+      } catch (e) {
+        console.warn("Failed to check initial Supabase session", e);
+      } finally {
+        setIsCheckingSession(false);
+      }
+    };
+    checkSession();
+
+    let subscription: any = null;
+    try {
+      const client = supabaseService.getClient();
+      if (client) {
+        const authChange = client.auth.onAuthStateChange((event, session) => {
+          setSbUser(session?.user || null);
+        });
+        subscription = authChange.data.subscription;
+      }
+    } catch (e) {
+      console.warn("Failed to subscribe to auth changes in App.tsx", e);
+    }
+
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
+  }, []);
+
   const [desktopMode, setDesktopMode] = useState<boolean>(() => {
     const saved = safeStorage.getItem("gothwad_studio_desktop_mode");
     return saved === "true";
@@ -511,7 +548,14 @@ export default function App() {
           </div>
         </div>
       }>
-        {!token ? (
+        {isCheckingSession ? (
+          <div className="flex h-screen w-screen items-center justify-center bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-5 w-5 animate-spin rounded-full border-t-2 border-r-2 border-zinc-400" style={{ borderTopColor: accentColor }} />
+              <span className="font-mono text-[10px] animate-pulse">CHECKING ACTIVE SESSION...</span>
+            </div>
+          </div>
+        ) : (!token && !sbUser) ? (
           <LoginScreen
             isLoading={isLoading}
             error={error}
