@@ -209,12 +209,38 @@ class SupabaseService {
     try {
       const { data: { user } } = await client.auth.getUser();
       if (user) {
+        // 1. Save to user_metadata as backup
         await client.auth.updateUser({
           data: { github_token: token }
         });
+
+        // 2. Save to public.github_tokens SQL table
+        if (token) {
+          const { error } = await client
+            .from("github_tokens")
+            .upsert({
+              user_id: user.id,
+              github_token: token,
+              updated_at: new Date().toISOString()
+            });
+          if (error) {
+            console.warn("Failed to save github_token to SQL table:", error);
+          } else {
+            console.log("Successfully saved github_token to SQL table");
+          }
+        } else {
+          // If token is cleared, delete from github_tokens table
+          const { error } = await client
+            .from("github_tokens")
+            .delete()
+            .eq("user_id", user.id);
+          if (error) {
+            console.warn("Failed to delete github_token from SQL table:", error);
+          }
+        }
       }
     } catch (e) {
-      console.warn("Failed to update user_metadata with github_token:", e);
+      console.warn("Failed to update user_metadata or SQL table with github_token:", e);
     }
   }
 
@@ -222,6 +248,24 @@ class SupabaseService {
     const client = this.getClient();
     if (!client) return null;
     
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (user) {
+        // 1. Try to fetch from public.github_tokens SQL table first
+        const { data, error } = await client
+          .from("github_tokens")
+          .select("github_token")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (!error && data?.github_token) {
+          return data.github_token;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch github_token from SQL table:", e);
+    }
+
     try {
       const { data: { user } } = await client.auth.getUser();
       if (user?.user_metadata?.github_token) {

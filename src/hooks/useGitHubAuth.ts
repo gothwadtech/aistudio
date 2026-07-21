@@ -70,6 +70,16 @@ export function useGitHubAuth() {
         const client = supabaseService.getClient();
         if (!client) return;
 
+        // Try to extract provider_token from the URL hash first (from Supabase redirect)
+        let providerToken = null;
+        const hash = window.location.hash || "";
+        if (hash.includes("provider_token=")) {
+          const match = hash.match(/provider_token=([^&]*)/);
+          if (match && match[1]) {
+            providerToken = decodeURIComponent(match[1]);
+          }
+        }
+
         const { data: { session }, error } = await client.auth.getSession();
         if (error) {
           console.error("Supabase session error:", error);
@@ -77,7 +87,18 @@ export function useGitHubAuth() {
         }
 
         if (session) {
-          const providerToken = session.provider_token || session.user?.user_metadata?.github_token;
+          if (!providerToken) {
+            providerToken = session.provider_token || session.user?.user_metadata?.github_token;
+          }
+          
+          if (!providerToken) {
+            // Check if there is a saved token in SQL database
+            const savedToken = await supabaseService.getUserGitHubToken();
+            if (savedToken) {
+              providerToken = savedToken;
+            }
+          }
+
           if (providerToken) {
             initAuth(providerToken);
             if (window.location.hash) {
@@ -98,7 +119,26 @@ export function useGitHubAuth() {
       if (client) {
         const authChange = client.auth.onAuthStateChange(async (event, session) => {
           if (session) {
-            const tokenToUse = session.provider_token || session.user?.user_metadata?.github_token;
+            let tokenToUse = null;
+            const hash = window.location.hash || "";
+            if (hash.includes("provider_token=")) {
+              const match = hash.match(/provider_token=([^&]*)/);
+              if (match && match[1]) {
+                tokenToUse = decodeURIComponent(match[1]);
+              }
+            }
+
+            if (!tokenToUse) {
+              tokenToUse = session.provider_token || session.user?.user_metadata?.github_token;
+            }
+
+            if (!tokenToUse) {
+              const savedToken = await supabaseService.getUserGitHubToken();
+              if (savedToken) {
+                tokenToUse = savedToken;
+              }
+            }
+
             if (tokenToUse) {
               initAuth(tokenToUse);
               if (window.location.hash) {

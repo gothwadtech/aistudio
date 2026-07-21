@@ -4,11 +4,12 @@ import { motion } from "motion/react";
 interface SplashScreenProps {
   status: string;
   accentColor: string;
+  isDarkActive?: boolean;
 }
 
-export default function SplashScreen({ status, accentColor }: SplashScreenProps) {
+export default function SplashScreen({ status, accentColor, isDarkActive = true }: SplashScreenProps) {
   return (
-    <div className="fixed inset-0 w-screen h-screen bg-zinc-950 text-zinc-300 transition-colors duration-350 flex flex-col items-center justify-between select-none font-sans overflow-hidden py-16 px-4 z-50">
+    <div className={`fixed inset-0 w-screen h-screen ${isDarkActive ? "bg-[#202124] text-zinc-300" : "bg-[#ffffff] text-zinc-800"} transition-colors duration-350 flex flex-col items-center justify-between select-none font-sans overflow-hidden py-16 px-4 z-50`}>
       {/* Top spacer for alignment */}
       <div className="h-10 shrink-0" />
 
@@ -39,7 +40,7 @@ export default function SplashScreen({ status, accentColor }: SplashScreenProps)
       >
         {/* Spinning indicator */}
         <div 
-          className="h-6 w-6 animate-spin rounded-full border-t-2 border-r-2 border-zinc-700" 
+          className={`h-6 w-6 animate-spin rounded-full border-t-2 border-r-2 ${isDarkActive ? "border-zinc-700" : "border-zinc-300"}`} 
           style={{ borderTopColor: accentColor }} 
         />
       </motion.div>

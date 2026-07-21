@@ -319,6 +319,13 @@ export default function PrimarySidebar({
           {sidebarPage === "home" ? (
             <div 
               className="w-7 h-7 rounded-lg bg-[#0494f4] flex items-center justify-center text-white shadow-md shrink-0 overflow-hidden" 
+              style={{
+                paddingLeft: "4px",
+                paddingRight: "4px",
+                paddingTop: "3px",
+                marginLeft: "0px",
+                marginTop: "-4px"
+              }}
             >
               <img src="/icon-512-maskable.png" alt="Gothwad Icon" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             </div>

@@ -574,7 +574,11 @@ export default function App() {
               });
               if (error) throw error;
               if (data?.url) {
-                window.location.href = data.url;
+                if (window.top) {
+                  window.top.location.href = data.url;
+                } else {
+                  window.location.href = data.url;
+                }
                 return;
               }
             } catch (linkErr) {
@@ -676,10 +680,10 @@ export default function App() {
       className="flex flex-col bg-zinc-950 text-zinc-300 selection:bg-zinc-850 select-none overflow-hidden font-sans relative"
     >
       <React.Suspense fallback={
-        <SplashScreen status="INITIALIZING GOTHWAD WORKSPACE..." accentColor={accentColor} />
+        <SplashScreen status="INITIALIZING GOTHWAD WORKSPACE..." accentColor={accentColor} isDarkActive={isDarkActive} />
       }>
         {showSplash ? (
-          <SplashScreen status={isCheckingSession ? "CHECKING ACTIVE SESSION..." : "INITIALIZING WORKSPACE..."} accentColor={accentColor} />
+          <SplashScreen status={isCheckingSession ? "CHECKING ACTIVE SESSION..." : "INITIALIZING WORKSPACE..."} accentColor={accentColor} isDarkActive={isDarkActive} />
         ) : !sbUser ? (
           <LoginScreen
             isLoading={isLoading}
