@@ -146,6 +146,27 @@ html.theme-light, :root.theme-light {
     --box-text: #ffffff;
   }
 
+  /* Light Theme */
+  [data-theme='light'] {
+    --primary-shadow: rgba(4, 148, 244, 0.15);
+    --bg-main: #f1f3f4;
+    --bg-card: #ffffff;
+    --bg-chat: #ffffff;
+    --text-primary: #202124;
+    --text-secondary: #5f6368;
+    --border-color: #dadce0;
+    --bubble-own: #e8eaed;
+    --bubble-other: #f1f3f4;
+    --bubble-text-own: #202124;
+    --bubble-text-other: #202124;
+    --header-bg: #e8eaed;
+    --header-text: #202124;
+    --nav-bg: #e8eaed;
+    --nav-text: #202124;
+    --box-bg: #f8f9fa;
+    --box-text: #202124;
+  }
+
   /* Safe Area Helpers */
   .pt-safe {
     padding-top: env(safe-area-inset-top);

@@ -65,6 +65,27 @@ export default function LoginScreen({
     }
   };
 
+  const handleResetPassword = async () => {
+    const email = window.prompt("अपना ईमेल एड्रेस दर्ज करें (Enter your email address to reset password):", emailInput);
+    if (!email) return;
+    if (!email.trim()) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+    
+    setEmailLoading(true);
+    setEmailError(null);
+    setEmailSuccess(null);
+    try {
+      await supabaseService.resetPassword(email.trim());
+      setEmailSuccess(`Password reset email has been sent to ${email}. Please check your inbox!`);
+    } catch (err: any) {
+      setEmailError(err.message || "Failed to send password reset email.");
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-screen bg-zinc-950 flex flex-col items-center relative overflow-y-auto select-none font-sans py-12 px-4">
       {/* Background Decorative Gradients */}
@@ -75,17 +96,36 @@ export default function LoginScreen({
       />
 
       <div className="w-full z-10 flex flex-col items-center max-w-md mx-auto">
-        
-        {/* Header Card (Matching GrixChat style) */}
-        <div className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-6 text-center flex flex-col items-center justify-center mb-5 shadow-sm">
-          <div className="w-16 h-16 bg-zinc-950 rounded-2xl shadow-inner flex items-center justify-center border border-zinc-800 p-0 overflow-hidden mb-3 relative">
-            <Github className="w-8 h-8 text-white animate-pulse" />
+        {/* Brand Action-like Button */}
+        <button
+          type="button"
+          className="w-full bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850 text-zinc-200 hover:text-white py-3.5 px-4 rounded-xl transition-all font-black uppercase tracking-widest cursor-pointer mb-5 flex items-center justify-center gap-3.5"
+          style={{ 
+            boxShadow: `0 2px 8px rgba(0, 0, 0, 0.2)`
+          }}
+        >
+          {/* Left Gothwad Logo Box */}
+          <div className="w-8 h-8 rounded-lg bg-[#0494f4] flex items-center justify-center shadow-inner shrink-0 overflow-hidden">
+            <img 
+              src="/icon-512-maskable.png" 
+              alt="Gothwad Logo" 
+              className="w-full h-full object-cover" 
+              referrerPolicy="no-referrer"
+            />
           </div>
-          <h2 className="text-[26px] font-black text-white tracking-tight">Gothwad AI Studio</h2>
-        </div>
 
-        {/* Auth Switcher Tabs (Matching GrixChat switcher) */}
-        <div className="w-full flex p-1 gap-2 select-none mb-5 max-w-md bg-zinc-900/50 border border-zinc-800/80 rounded-xl">
+          <span className="font-black tracking-widest text-zinc-100 text-[13px] sm:text-[15px]">
+            GOTHWAD AI STUDIO
+          </span>
+
+          {/* Right GitHub Logo Box */}
+          <div className="w-8 h-8 rounded-lg bg-[#0494f4] flex items-center justify-center shadow-inner shrink-0 overflow-hidden">
+            <Github className="w-4.5 h-4.5 text-white" />
+          </div>
+        </button>
+
+        {/* Auth Switcher Tabs */}
+        <div className="w-full flex gap-3 select-none mb-5 max-w-md">
           <button
             type="button"
             onClick={() => {
@@ -93,14 +133,13 @@ export default function LoginScreen({
               setEmailError(null);
               setEmailSuccess(null);
             }}
-            className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center ${
               !isSignUp 
-                ? "text-white shadow-md" 
-                : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
+                ? "text-white shadow-md font-extrabold" 
+                : "text-zinc-400 hover:text-white hover:bg-zinc-900/30"
             }`}
             style={!isSignUp ? { backgroundColor: accentColor, boxShadow: `0 4px 12px ${accentColor}25` } : {}}
           >
-            <LogIn className="w-3.5 h-3.5" />
             <span>Sign In</span>
           </button>
           <button
@@ -110,14 +149,13 @@ export default function LoginScreen({
               setEmailError(null);
               setEmailSuccess(null);
             }}
-            className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center ${
               isSignUp 
-                ? "text-white shadow-md" 
-                : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
+                ? "text-white shadow-md font-extrabold" 
+                : "text-zinc-400 hover:text-white hover:bg-zinc-900/30"
             }`}
             style={isSignUp ? { backgroundColor: accentColor, boxShadow: `0 4px 12px ${accentColor}25` } : {}}
           >
-            <UserPlus className="w-3.5 h-3.5" />
             <span>Sign Up</span>
           </button>
         </div>
@@ -195,24 +233,30 @@ export default function LoginScreen({
             </div>
 
             {/* Primary Submit Button */}
-            <button 
-              type="submit"
-              disabled={emailLoading || !emailInput.trim() || !passwordInput.trim() || passwordInput.length < 6}
-              className="w-full text-white text-sm font-bold py-3.5 rounded-xl transition-all disabled:opacity-70 active:scale-[0.98] shadow-sm mt-2 cursor-pointer flex items-center justify-center gap-2"
-              style={{ 
-                backgroundColor: sbConfigured ? accentColor : "#27272a",
-                boxShadow: sbConfigured ? `0 4px 12px ${accentColor}20` : "none"
-              }}
-            >
-              {emailLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : isSignUp ? (
-                <UserPlus className="w-4 h-4" />
-              ) : (
-                <LogIn className="w-4 h-4" />
-              )}
-              <span>Sign In / Sign Up</span>
-            </button>
+            {(() => {
+              const isFormValid = emailInput.trim() !== "" && passwordInput.trim() !== "" && passwordInput.length >= 6;
+              return (
+                <button 
+                  type="submit"
+                  disabled={emailLoading || !isFormValid}
+                  className={`w-full py-4 rounded-xl transition-all disabled:opacity-75 active:scale-[0.98] mt-2 cursor-pointer flex items-center justify-center font-black uppercase tracking-widest text-[11px] sm:text-xs ${
+                    isFormValid
+                      ? "text-white" 
+                      : "text-zinc-500 bg-zinc-900 border border-zinc-800/60"
+                  }`}
+                  style={isFormValid ? { 
+                    backgroundColor: accentColor,
+                    boxShadow: `0 4px 12px ${accentColor}25`
+                  } : {}}
+                >
+                  {emailLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                  ) : (
+                    <span>{isSignUp ? "SIGN UP" : "SIGN IN"}</span>
+                  )}
+                </button>
+              );
+            })()}
 
             {/* Separator */}
             <div className="flex items-center gap-4 py-2">
@@ -242,18 +286,18 @@ export default function LoginScreen({
 
         </div>
 
-        {/* Footer Brand Card (Exact GrixChat style mapped to Gothwad AI Studio) */}
-        <div className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-5 text-center flex flex-col items-center justify-center mt-6 shadow-sm select-none gap-3.5">
-          <p className="text-xs text-zinc-400/80 leading-relaxed max-w-[280px] mx-auto">
-            If you forget your password, you can <a href="mailto:support@gothwadtechnologies.com?subject=Gothwad%20AI%20Studio%20Password%20Reset" className="font-bold hover:underline" style={{ color: accentColor }}>reset it here</a>. For any other assistance, please <a href="mailto:support@gothwadtechnologies.com" className="font-bold hover:underline" style={{ color: accentColor }}>contact us</a>.
-          </p>
-          <div className="w-full h-[1px] bg-zinc-800/60"></div>
-          <div className="text-center max-w-[280px] mx-auto">
-            <span className="text-xs font-semibold text-zinc-500 block leading-relaxed">
-              By using <a href="https://aistudio.gothwadtech.com" target="_blank" rel="noopener noreferrer" className="font-bold hover:underline cursor-pointer" style={{ color: accentColor }}>Gothwad AI Studio</a>, you agree to our <span className="font-bold hover:underline cursor-pointer" style={{ color: accentColor }}>Terms of Service</span> & <span className="font-bold hover:underline cursor-pointer" style={{ color: accentColor }}>Privacy Policy</span>.
-            </span>
-          </div>
-        </div>
+        {/* Forgot Password Button */}
+        <button
+          type="button"
+          onClick={handleResetPassword}
+          disabled={emailLoading}
+          className="w-full bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850 text-zinc-400 hover:text-white py-3.5 rounded-xl transition-all font-bold text-xs uppercase tracking-widest cursor-pointer mt-6 flex items-center justify-center gap-2"
+          style={{ 
+            boxShadow: `0 2px 8px rgba(0, 0, 0, 0.2)`
+          }}
+        >
+          <span>forget password ?</span>
+        </button>
 
         {/* Extra bottom spacer to match spacing */}
         <div className="h-12 w-full shrink-0" />

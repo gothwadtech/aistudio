@@ -5,8 +5,13 @@ export function useGitHub() {
   const auth = useGitHubAuth();
   const fs = useGitHubFileSystem();
 
-  const handleLogout = () => {
-    auth.logout();
+  const handleLogout = async () => {
+    await auth.logout();
+    fs.resetFileSystem();
+  };
+
+  const handleDisconnectGitHub = async () => {
+    await auth.disconnectGitHub();
     fs.resetFileSystem();
   };
 
@@ -45,6 +50,7 @@ export function useGitHub() {
     renameNode: fs.renameNode,
     deleteNode: fs.deleteNode,
     logout: handleLogout,
+    disconnectGitHub: handleDisconnectGitHub,
     refreshRepos: auth.refreshRepos
   };
 }

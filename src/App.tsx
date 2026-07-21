@@ -10,6 +10,7 @@ import { getAppModels, saveAppModels, AIModel } from "./utils/modelRegistry";
 import MobileLayout from "./components/MobileLayout";
 import DesktopLayout from "./components/DesktopLayout";
 import LoginScreen from "./components/LoginScreen";
+import SplashScreen from "./components/SplashScreen";
 
 const pathToOptionMap: Record<string, { option: string; studio: "chat" | "software" }> = {
   "/chat": { option: "gothwad_ai", studio: "chat" },
@@ -77,34 +78,58 @@ export default function App() {
     saveFile,
     syncZipFiles,
     logout,
+    disconnectGitHub,
     refreshRepos
   } = useGitHub();
 
   const [sbUser, setSbUser] = useState<any>(null);
   const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
+  const [showSplash, setShowSplash] = useState<boolean>(true);
 
   useEffect(() => {
+    let active = true;
+    const startTime = Date.now();
+
     const checkSession = async () => {
       try {
         const client = supabaseService.getClient();
         if (client) {
           const { data: { user } } = await client.auth.getUser();
-          setSbUser(user);
+          if (active) setSbUser(user);
         }
       } catch (e) {
         console.warn("Failed to check initial Supabase session", e);
       } finally {
-        setIsCheckingSession(false);
+        if (active) {
+          setIsCheckingSession(false);
+          // Force a minimum duration of 2 seconds (2000 ms) for the splash screen
+          const elapsed = Date.now() - startTime;
+          const remaining = Math.max(0, 2000 - elapsed);
+          setTimeout(() => {
+            if (active) {
+              setShowSplash(false);
+            }
+          }, remaining);
+        }
       }
     };
+
     checkSession();
+
+    // 8-second safety override to ensure user is never stuck
+    const maxTimeout = setTimeout(() => {
+      if (active) {
+        setIsCheckingSession(false);
+        setShowSplash(false);
+      }
+    }, 8000);
 
     let subscription: any = null;
     try {
       const client = supabaseService.getClient();
       if (client) {
         const authChange = client.auth.onAuthStateChange((event, session) => {
-          setSbUser(session?.user || null);
+          if (active) setSbUser(session?.user || null);
         });
         subscription = authChange.data.subscription;
       }
@@ -113,6 +138,8 @@ export default function App() {
     }
 
     return () => {
+      active = false;
+      clearTimeout(maxTimeout);
       if (subscription) subscription.unsubscribe();
     };
   }, []);
@@ -179,9 +206,38 @@ export default function App() {
     navigateToOption(val);
   };
 
-  // Listen to popstate for browser back/forward history navigation
+  // Listen to popstate and route changes with authentication protection
   useEffect(() => {
+    if (isCheckingSession) return;
+
+    if (!sbUser) {
+      // Force URL back to root / if they are not logged in, no bypass allowed
+      if (window.location.pathname !== "/") {
+        window.history.replaceState(null, "", "/");
+      }
+      return;
+    }
+
+    // If logged in and on / or empty, redirect to default/saved studio path
+    if (window.location.pathname === "/" || window.location.pathname === "") {
+      const savedOption = safeStorage.getItem("gothwad_active_main_option") || "gothwad_ai";
+      const defaultPath = optionToPathMap[savedOption] || "/chat";
+      window.history.replaceState(null, "", defaultPath);
+      const match = pathToOptionMap[defaultPath];
+      if (match) {
+        setActiveMainOptionRaw(match.option);
+        setActiveStudio(match.studio);
+      }
+    }
+
     const handlePopState = () => {
+      if (!sbUser) {
+        if (window.location.pathname !== "/") {
+          window.history.replaceState(null, "", "/");
+        }
+        return;
+      }
+
       const path = window.location.pathname;
       const match = pathToOptionMap[path];
       if (match) {
@@ -191,18 +247,18 @@ export default function App() {
         safeStorage.setItem("gothwad_studio_active_studio", match.studio);
       } else {
         if (path === "/" || path === "") {
-          window.history.replaceState(null, "", "/chat");
-          setActiveMainOptionRaw("gothwad_ai");
-          setActiveStudio("chat");
-          safeStorage.setItem("gothwad_active_main_option", "gothwad_ai");
-          safeStorage.setItem("gothwad_studio_active_studio", "chat");
+          const savedOption = safeStorage.getItem("gothwad_active_main_option") || "gothwad_ai";
+          const defaultPath = optionToPathMap[savedOption] || "/chat";
+          window.history.replaceState(null, "", defaultPath);
+          setActiveMainOptionRaw(savedOption);
+          setActiveStudio((savedOption === "software") ? "software" : "chat");
         }
       }
     };
 
     window.addEventListener("popstate", handlePopState);
 
-    // Sync path URL on mount
+    // Sync path URL on mount/login
     const initialPath = window.location.pathname;
     const initialMatch = pathToOptionMap[initialPath];
     if (initialMatch) {
@@ -210,16 +266,12 @@ export default function App() {
       setActiveStudio(initialMatch.studio);
       safeStorage.setItem("gothwad_active_main_option", initialMatch.option);
       safeStorage.setItem("gothwad_studio_active_studio", initialMatch.studio);
-    } else {
-      const savedOption = safeStorage.getItem("gothwad_active_main_option") || "gothwad_ai";
-      const defaultPath = optionToPathMap[savedOption] || "/chat";
-      window.history.replaceState(null, "", defaultPath);
     }
 
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, []);
+  }, [isCheckingSession, sbUser]);
 
   const [chatSessions, setChatSessions] = useState<any[]>(() => {
     const saved = safeStorage.getItem("gothwad_studio_chat_sessions");
@@ -429,15 +481,40 @@ export default function App() {
     document.documentElement.style.setProperty("--font-mono", cssFont);
     document.body.style.fontFamily = cssFont;
 
-    const isDark = themeMode === "dark" || (themeMode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    setIsDarkActive(isDark);
-    if (isDark) {
-      document.documentElement.classList.remove("theme-light");
-      document.documentElement.setAttribute("data-theme", "dark");
+    const applyTheme = (dark: boolean) => {
+      setIsDarkActive(dark);
+      if (dark) {
+        document.documentElement.classList.remove("theme-light");
+        document.documentElement.setAttribute("data-theme", "dark");
+      } else {
+        document.documentElement.classList.add("theme-light");
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    };
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const initialIsDark = themeMode === "dark" || (themeMode === "system" && mediaQuery.matches);
+    applyTheme(initialIsDark);
+
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      if (themeMode === "system") {
+        applyTheme(e.matches);
+      }
+    };
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleSystemThemeChange);
     } else {
-      document.documentElement.classList.add("theme-light");
-      document.documentElement.setAttribute("data-theme", "light");
+      mediaQuery.addListener(handleSystemThemeChange);
     }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", handleSystemThemeChange);
+      } else {
+        mediaQuery.removeListener(handleSystemThemeChange);
+      }
+    };
   }, [themeMode, accentColor, fontFamily]);
 
   useEffect(() => {
@@ -479,6 +556,44 @@ export default function App() {
   }, [selectedRepo]);
 
   const { triggerOAuthLogin } = useOAuth(authConfig, login);
+
+  const handleTriggerOAuth = async () => {
+    if (supabaseService.isConfigured()) {
+      try {
+        const client = supabaseService.getClient();
+        if (client) {
+          const { data: { session } } = await client.auth.getSession();
+          if (session?.user) {
+            try {
+              const { data, error } = await client.auth.linkIdentity({
+                provider: "github",
+                options: {
+                  scopes: "repo,user,delete_repo",
+                  redirectTo: window.location.origin
+                }
+              });
+              if (error) throw error;
+              if (data?.url) {
+                window.location.href = data.url;
+                return;
+              }
+            } catch (linkErr) {
+              console.warn("linkIdentity failed, falling back to signInWithGitHub:", linkErr);
+              await supabaseService.signInWithGitHub();
+            }
+          } else {
+            await supabaseService.signInWithGitHub();
+          }
+        } else {
+          await supabaseService.signInWithGitHub();
+        }
+      } catch (err: any) {
+        alert(err.message || "Failed to initiate GitHub login");
+      }
+    } else {
+      triggerOAuthLogin();
+    }
+  };
 
   const handleSelectRepo = (repo: any) => {
     selectRepo(repo);
@@ -523,6 +638,26 @@ export default function App() {
     }
   };
 
+  const handleClearAppData = async () => {
+    if (window.confirm("क्या आप सचमुच सारा डेटा और कैश हटाना चाहते हैं? इससे ऐप पूरी तरह से रीसेट हो जाएगा और आप लॉगआउट हो जाएंगे। (Are you sure you want to clear all app data and cache? This will reset the app completely and log you out.)")) {
+      try {
+        const client = supabaseService.getClient();
+        if (client) {
+          await client.auth.signOut();
+        }
+      } catch (e) {
+        console.warn("Error signing out during clear cache:", e);
+      }
+      
+      safeStorage.clear();
+      if (typeof window !== "undefined") {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = "/";
+      }
+    }
+  };
+
   const toggleDirectoryExpand = (path: string) => {
     loadDirectory(path);
   };
@@ -541,21 +676,11 @@ export default function App() {
       className="flex flex-col bg-zinc-950 text-zinc-300 selection:bg-zinc-850 select-none overflow-hidden font-sans relative"
     >
       <React.Suspense fallback={
-        <div className="flex h-screen w-screen items-center justify-center bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-5 w-5 animate-spin rounded-full border-t-2 border-r-2 border-zinc-400" style={{ borderTopColor: accentColor }} />
-            <span className="font-mono text-[10px] animate-pulse">INITIALIZING GOTHWAD WORKSPACE...</span>
-          </div>
-        </div>
+        <SplashScreen status="INITIALIZING GOTHWAD WORKSPACE..." accentColor={accentColor} />
       }>
-        {isCheckingSession ? (
-          <div className="flex h-screen w-screen items-center justify-center bg-zinc-950 font-sans text-xs text-zinc-500 tracking-wider">
-            <div className="flex flex-col items-center gap-3">
-              <div className="h-5 w-5 animate-spin rounded-full border-t-2 border-r-2 border-zinc-400" style={{ borderTopColor: accentColor }} />
-              <span className="font-mono text-[10px] animate-pulse">CHECKING ACTIVE SESSION...</span>
-            </div>
-          </div>
-        ) : (!token && !sbUser) ? (
+        {showSplash ? (
+          <SplashScreen status={isCheckingSession ? "CHECKING ACTIVE SESSION..." : "INITIALIZING WORKSPACE..."} accentColor={accentColor} />
+        ) : !sbUser ? (
           <LoginScreen
             isLoading={isLoading}
             error={error}
@@ -563,7 +688,7 @@ export default function App() {
             onPatInputChange={setPatInput}
             onPatSubmit={handlePatLoginSubmit}
             onTriggerSupabaseOAuth={handleSupabaseLogin}
-            onTriggerOAuth={triggerOAuthLogin}
+            onTriggerOAuth={handleTriggerOAuth}
             authConfig={authConfig}
             accentColor={accentColor}
           />
@@ -579,6 +704,9 @@ export default function App() {
             token={token}
             selectRepo={selectRepo}
             logout={logout}
+            disconnectGitHub={disconnectGitHub}
+            onClearAppData={handleClearAppData}
+            sbUser={sbUser}
             isMobile={isMobile}
             mobileActiveTab={mobileActiveTab}
             setMobileActiveTab={setMobileActiveTab}
@@ -594,7 +722,7 @@ export default function App() {
             patInput={patInput}
             onPatInputChange={setPatInput}
             onPatSubmit={handlePatLoginSubmit}
-            onTriggerOAuth={triggerOAuthLogin}
+            onTriggerOAuth={handleTriggerOAuth}
             onSelectRepo={handleSelectRepo}
             onSelectBranch={selectBranch}
             onToggleDir={toggleDirectoryExpand}
@@ -643,6 +771,9 @@ export default function App() {
             activeFile={activeFile}
             token={token}
             logout={logout}
+            disconnectGitHub={disconnectGitHub}
+            onClearAppData={handleClearAppData}
+            sbUser={sbUser}
             isMobile={isMobile}
             activeSection={activeSection}
             setActiveSection={setActiveSection}
@@ -656,7 +787,7 @@ export default function App() {
             patInput={patInput}
             onPatInputChange={setPatInput}
             onPatSubmit={handlePatLoginSubmit}
-            onTriggerOAuth={triggerOAuthLogin}
+            onTriggerOAuth={handleTriggerOAuth}
             onSelectRepo={handleSelectRepo}
             onSelectBranch={selectBranch}
             onToggleDir={toggleDirectoryExpand}

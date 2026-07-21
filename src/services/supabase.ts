@@ -170,6 +170,18 @@ class SupabaseService {
     return data;
   }
 
+  async resetPassword(email: string) {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error("Supabase is not configured. Please supply Supabase URL and Anon Key.");
+    }
+    const { data, error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) throw error;
+    return data;
+  }
+
   async signInWithEmail(email: string, password: string) {
     const client = this.getClient();
     if (!client) {

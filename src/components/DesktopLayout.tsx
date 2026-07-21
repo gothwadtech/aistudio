@@ -86,6 +86,9 @@ interface DesktopLayoutProps {
   onUpdateAppModels: (models: any[]) => void;
   activeMainOption?: string;
   setActiveMainOption?: (val: string | ((prev: string) => string)) => void;
+  disconnectGitHub?: () => Promise<void>;
+  onClearAppData?: () => void;
+  sbUser?: any;
 }
 
 export default function DesktopLayout({
@@ -101,6 +104,9 @@ export default function DesktopLayout({
   fileSystemTree,
   activeFile,
   logout,
+  disconnectGitHub,
+  onClearAppData,
+  sbUser,
   token,
   repos,
   branches,
@@ -403,7 +409,10 @@ export default function DesktopLayout({
                   onDesktopModeChange={onDesktopModeChange}
                   token={token}
                   onLogout={logout}
+                  disconnectGitHub={disconnectGitHub}
+                  onClearAppData={onClearAppData}
                   user={user}
+                  sbUser={sbUser}
                   customApiKey={customApiKey}
                   onSetCustomApiKey={onSetCustomApiKey}
                   groqApiKey={groqApiKey}

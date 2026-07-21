@@ -101,6 +101,9 @@ interface MobileLayoutProps {
   onUpdateAppModels: (models: any[]) => void;
   activeMainOption?: string;
   setActiveMainOption?: (val: string | ((prev: string) => string)) => void;
+  disconnectGitHub?: () => Promise<void>;
+  onClearAppData?: () => void;
+  sbUser?: any;
 }
 
 export default function MobileLayout({
@@ -114,6 +117,9 @@ export default function MobileLayout({
   token,
   selectRepo,
   logout,
+  disconnectGitHub,
+  onClearAppData,
+  sbUser,
   isMobile,
   mobileActiveTab,
   setMobileActiveTab,
@@ -394,7 +400,10 @@ export default function MobileLayout({
                       onDesktopModeChange={onDesktopModeChange}
                       token={token}
                       onLogout={logout}
+                      disconnectGitHub={disconnectGitHub}
+                      onClearAppData={onClearAppData}
                       user={user}
+                      sbUser={sbUser}
                       showCompactTitle={true}
                       customApiKey={customApiKey}
                       onSetCustomApiKey={onSetCustomApiKey}

@@ -123,14 +123,32 @@ export function useGitHubAuth() {
   }, [initAuth]);
 
 
-  const handleLogout = () => {
+  const disconnectGitHub = async () => {
     github.setToken(null);
     setTokenState(null);
     setUser(null);
     setRepos([]);
-    // Sign out from Supabase as well
     try {
-      supabaseService.signOut();
+      await supabaseService.saveUserGitHubToken("");
+    } catch (e) {
+      console.warn("Failed to clear GitHub token from Supabase:", e);
+    }
+  };
+
+  const handleLogout = async () => {
+    github.setToken(null);
+    setTokenState(null);
+    setUser(null);
+    setRepos([]);
+    // Sign out from Supabase only if there is an active session
+    try {
+      const client = supabaseService.getClient();
+      if (client) {
+        const { data: { session } } = await client.auth.getSession();
+        if (session) {
+          await client.auth.signOut();
+        }
+      }
     } catch (e) {
       console.warn("Failed to sign out from Supabase on logout:", e);
     }
@@ -157,6 +175,7 @@ export function useGitHubAuth() {
     error,
     login: initAuth,
     logout: handleLogout,
+    disconnectGitHub,
     refreshRepos
   };
 }

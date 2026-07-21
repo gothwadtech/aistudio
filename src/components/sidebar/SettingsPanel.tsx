@@ -14,7 +14,10 @@ interface SettingsPanelProps {
   onDesktopModeChange?: (enabled: boolean) => void;
   token: string | null;
   onLogout: () => void;
+  disconnectGitHub?: () => Promise<void>;
+  onClearAppData?: () => void;
   user: any;
+  sbUser?: any;
   showCompactTitle?: boolean;
   customApiKey: string;
   onSetCustomApiKey: (key: string) => void;
@@ -37,7 +40,10 @@ export default function SettingsPanel({
   onDesktopModeChange,
   token,
   onLogout,
+  disconnectGitHub,
+  onClearAppData,
   user,
+  sbUser,
   showCompactTitle = false,
   customApiKey,
   onSetCustomApiKey,
@@ -589,21 +595,49 @@ export default function SettingsPanel({
         </div>
       </div>
 
-      {/* Auth Information */}
-      <div className="space-y-1.5">
-        <label className="text-zinc-500 font-bold uppercase block">Gothwad Ai Studio Developer Token</label>
-        <div className="bg-zinc-950 p-2.5 rounded-lg border border-zinc-850 break-all text-zinc-300">
-          {token ? `${token.substring(0, 10)}****************` : "Not connected"}
+      {/* Auth & Identity Information */}
+      <div className="space-y-2.5 bg-zinc-950/40 p-3 rounded-lg border border-zinc-850">
+        <span className="text-zinc-500 font-bold uppercase block tracking-wide text-[9px]">Gothwad Identity Engine</span>
+        
+        {/* Email Identity (Always visible if logged in) */}
+        <div className="space-y-1">
+          <span className="text-zinc-600 font-bold uppercase text-[8px] block">Primary Login Identity</span>
+          <div className="bg-zinc-950/60 p-2 rounded border border-zinc-900 flex justify-between items-center">
+            <span className="text-zinc-300 font-medium text-[10px]">{sbUser?.email || "Not logged in"}</span>
+            <span className="text-[7.5px] font-bold uppercase font-mono px-1.5 py-0.5 rounded border border-emerald-900/35 bg-emerald-950/20 text-emerald-400">
+              Active Email Session
+            </span>
+          </div>
+        </div>
+
+        {/* GitHub Integration Status (Shows username if connected) */}
+        <div className="space-y-1">
+          <span className="text-zinc-600 font-bold uppercase text-[8px] block">GitHub Integration</span>
+          <div className="bg-zinc-950/60 p-2 rounded border border-zinc-900">
+            {token && user ? (
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-300 text-[10px]">@{user.login}</span>
+                  <span className="text-[7.5px] font-bold uppercase font-mono px-1.5 py-0.5 rounded border border-indigo-900/35 bg-indigo-950/20 text-indigo-400">
+                    Connected
+                  </span>
+                </div>
+                {user.name && <p className="text-zinc-500 font-sans text-[9px]">{user.name}</p>}
+                <p className="text-[8px] text-zinc-600 font-mono break-all pt-0.5">
+                  Token: {token.substring(0, 10)}****************
+                </p>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-500 text-[9.5px]">No GitHub accounts linked</span>
+                <span className="text-[7.5px] font-bold uppercase font-mono px-1.5 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-500">
+                  Inactive
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {user && (
-        <div className="space-y-1 bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-850">
-          <span className="text-zinc-500 font-bold uppercase block">PROFILE SESSION</span>
-          <p className="text-zinc-200">@{user.login}</p>
-          <p className="text-zinc-400 font-sans text-[10px]">{user.name || "GitHub Dev"}</p>
-        </div>
-      )}
 
       <div className="bg-zinc-950/20 p-2.5 rounded-lg border border-zinc-850 text-zinc-500 leading-normal space-y-1">
         <span className="text-zinc-400 font-bold uppercase block">WORKSTATION HOTKEYS</span>
@@ -612,12 +646,36 @@ export default function SettingsPanel({
         <p>• <span style={{ color: accentColor }}>Timeline tabs</span>: Checkpoint rollback</p>
       </div>
 
-      <button
-        onClick={onLogout}
-        className="w-full bg-red-950/15 hover:bg-red-900/25 text-red-400 border border-red-900/35 py-2 rounded-lg transition-colors text-center font-bold font-mono cursor-pointer"
-      >
-        Disconnect GitHub Session
-      </button>
+      {/* Separate Actions */}
+      <div className="space-y-2 pt-1">
+        {token && (
+          <button
+            onClick={() => {
+              if (disconnectGitHub) {
+                disconnectGitHub();
+              }
+            }}
+            className="w-full bg-amber-950/15 hover:bg-amber-900/25 text-amber-500 border border-amber-900/35 py-2 rounded-lg transition-colors text-center font-bold font-mono cursor-pointer text-[10px] uppercase tracking-wide animate-fade-in"
+          >
+            Disconnect GitHub Link
+          </button>
+        )}
+
+        <button
+          onClick={onLogout}
+          className="w-full bg-red-950/15 hover:bg-red-900/25 text-red-400 border border-red-900/35 py-2 rounded-lg transition-colors text-center font-bold font-mono cursor-pointer text-[10px] uppercase tracking-wide"
+        >
+          Logout Gothwad Account
+        </button>
+
+        <button
+          onClick={onClearAppData}
+          className="w-full bg-orange-950/15 hover:bg-orange-900/25 text-orange-400 border border-orange-900/35 py-2 rounded-lg transition-colors text-center font-bold font-mono cursor-pointer text-[10px] uppercase tracking-wide"
+          title="Clears all LocalStorage, SessionStorage, and cached settings to restore to completely clean state."
+        >
+          Clear App Data & Cache
+        </button>
+      </div>
     </div>
   );
 }
